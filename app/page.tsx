@@ -1,7 +1,22 @@
+import {
+  HeroSection,
+  NewArrivalsSection,
+  ShopByCategorySection,
+} from "@/components/landing";
+import { SiteFooter, SiteHeader } from "@/components/layout";
+
 export default function Home() {
   return (
-    <main className="flex flex-1 items-center justify-center">
-      <h1 className="text-2xl font-semibold">Clothing Store</h1>
-    </main>
+    <>
+      <SiteHeader />
+      <HeroSection />
+
+      <main>
+        <NewArrivalsSection />
+        <ShopByCategorySection />
+      </main>
+
+      <SiteFooter />
+    </>
   );
 }
