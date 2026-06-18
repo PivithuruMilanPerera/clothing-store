@@ -8,9 +8,13 @@ export function ShopByCategorySection() {
       <Container>
         <SectionHeader title="Shop By Category" />
 
-        <div className="grid gap-3 md:grid-cols-3 md:gap-6">
+        <div className="flex flex-nowrap gap-2 sm:gap-4 md:gap-5">
           {categories.map((category) => (
-            <CategoryCard key={category.id} category={category} />
+            <CategoryCard
+              key={category.id}
+              category={category}
+              className="min-w-0 flex-1"
+            />
           ))}
         </div>
       </Container>

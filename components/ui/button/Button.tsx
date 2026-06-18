@@ -29,7 +29,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const classes = cn(
-    "type-label-uppercase inline-flex items-center justify-center px-6 py-3 transition-none",
+    "type-label-uppercase inline-flex items-center justify-center px-6 py-3 transition-none disabled:pointer-events-none disabled:opacity-50",
     variantStyles[variant],
     className,
   );

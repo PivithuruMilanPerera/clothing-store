@@ -11,3 +11,97 @@ body {
   color: var(--on-background);
   font-family: var(--font-family-body);
 }
+
+.hero-swiper .swiper-wrapper,
+.hero-swiper .swiper-slide {
+  height: 100%;
+}
+
+.hero-swiper .swiper-slide:not(.swiper-slide-active) .hero-slide-card {
+  opacity: 0.9;
+}
+
+.hero-swiper .swiper-slide:not(.swiper-slide-active) .hero-slide-overlay {
+  background: rgb(0 0 0 / 25%);
+}
+
+.hero-swiper .swiper-slide:not(.swiper-slide-active) .hero-slide-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero-swiper .swiper-slide-prev .hero-slide-card {
+  border-radius: 0 1rem 1rem 0;
+}
+
+.hero-swiper .swiper-slide-active .hero-slide-card,
+.hero-swiper .swiper-slide-next .hero-slide-card {
+  border-radius: 1rem;
+}
+
+@keyframes hero-ken-burns-in {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes hero-ken-burns-out {
+  from {
+    transform: scale(1.08);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+.hero-swiper .swiper-slide-active .hero-slide-image--in {
+  animation: hero-ken-burns-in var(--hero-slide-duration, 6s) ease-out forwards;
+}
+
+.hero-swiper .swiper-slide-active .hero-slide-image--out {
+  animation: hero-ken-burns-out var(--hero-slide-duration, 6s) ease-out forwards;
+}
+
+.hero-swiper .swiper-slide:not(.swiper-slide-active) .hero-slide-image {
+  animation: none;
+  transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-swiper .hero-slide-image {
+    animation: none !important;
+    transform: scale(1) !important;
+  }
+}
+
+.hero-swiper-pagination {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: auto !important;
+}
+
+.hero-swiper-cutoff {
+  display: block;
+  width: 1rem;
+  height: 2px;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--outline) 60%, transparent);
+  transition:
+    width 300ms ease-out,
+    background-color 300ms ease-out;
+}
+
+.hero-swiper-cutoff-active {
+  width: 2rem;
+  background: var(--on-surface);
+}

@@ -1,10 +1,14 @@
 import type { Category, FooterColumn, NavLink, Product } from "@/lib/types";
+import kids from "@/app/assets/category/kids-image.jpg";
+import heroimage1 from "@/app/assets/hero-slider/image1.png";
+import heroimage2 from "@/app/assets/hero-slider/image2.png";
+import heroimage3 from "@/app/assets/hero-slider/image3.png";
 
 export const navLinks: NavLink[] = [
   { label: "Men", href: "/men" },
   { label: "Women", href: "/women" },
+  { label: "Kids", href: "/kids" },
   { label: "Accessories", href: "/accessories" },
-  { label: "Clearance", href: "/clearance" },
 ];
 
 export const newArrivals: Product[] = [
@@ -59,6 +63,12 @@ export const categories: Category[] = [
     href: "/women",
   },
   {
+    id: "kids",
+    name: "Kids",
+    image: kids.src,
+    href: "/kids",
+  },
+  {
     id: "accessories",
     name: "Accessories",
     image:
@@ -96,19 +106,37 @@ export const heroSlides = [
   {
     id: "precision",
     headline: "Uncompromising Precision.",
-    image: "/temp/hero.png",
+    image: heroimage1.src,
     cta: { label: "Shop Collection", href: "/collection" },
   },
   {
+    id: "tailored-motion",
+    headline: "Tailored Motion.",
+    image: heroimage2.src,
+    cta: { label: "Shop Now", href: "/collection/tailored-motion" },
+  },
+  {
     id: "summer-edit",
-    headline: "Refined Essentials for Everyday Movement.",
-    image: "/temp/hero.png",
-    cta: { label: "Explore New Arrivals", href: "/new-arrivals" },
+    headline: "Refined Essentials.",
+    image: heroimage3.src,
+    cta: { label: "Explore", href: "/new-arrivals" },
+  },
+  {
+    id: "graphic-minimal",
+    headline: "Graphic Minimal.",
+    image: heroimage1.src,
+    cta: { label: "Shop Now", href: "/collection/graphic-minimal" },
   },
   {
     id: "street-form",
-    headline: "Elevated Streetwear, Designed for Comfort.",
-    image: "/temp/hero.png",
-    cta: { label: "Discover Street Form", href: "/streetwear" },
+    headline: "Street Form.",
+    image: heroimage2.src,
+    cta: { label: "Discover", href: "/streetwear" },
+  },
+  {
+    id: "footwear-edit",
+    headline: "Footwear Edit.",
+    image: heroimage3.src,
+    cta: { label: "Shop Now", href: "/collection/footwear-edit" },
   },
 ];

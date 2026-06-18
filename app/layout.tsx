@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk, Montserrat } from "next/font/google";
+import { CartProvider } from "@/components/cart";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -30,7 +31,7 @@ export default function RootLayout({
       className={`${montserrat.variable} ${hankenGrotesk.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col">
-        {children}
+        <CartProvider>{children}</CartProvider>
       </body>
     </html>
   );

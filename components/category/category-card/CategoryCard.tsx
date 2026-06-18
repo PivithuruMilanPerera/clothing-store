@@ -12,13 +12,16 @@ export function CategoryCard({ category, className }: CategoryCardProps) {
   return (
     <Link
       href={category.href}
-      className={cn("group relative block aspect-3/4 overflow-hidden", className)}
+      className={cn(
+        "group relative block aspect-[3/5] overflow-hidden md:aspect-[2/3.5]",
+        className,
+      )}
     >
       <Image
         src={category.image}
         alt={category.name}
         fill
-        sizes="(max-width: 768px) 100vw, 33vw"
+        sizes="25vw"
         className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
       />
       <div className="absolute inset-0 bg-linear-to-t from-primary/70 via-primary/15 to-transparent transition-opacity duration-300 group-hover:from-primary/80" />
