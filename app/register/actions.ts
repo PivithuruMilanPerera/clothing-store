@@ -1,6 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import {
+  parseRegistrationFields,
+  setupRegistrationProfile,
+  validateRegistrationFields,
+} from "@/lib/registration";
+import { createAdminClient, hasAdminCredentials } from "@/lib/supabase/admin";
 
 export type RegisterState = {
   error?: string;
@@ -27,36 +33,25 @@ export async function registerUser(
   _prevState: RegisterState | null,
   formData: FormData,
 ): Promise<RegisterState> {
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+  const fields = parseRegistrationFields(formData);
+  const validationError = validateRegistrationFields(fields);
 
-  if (!name || !email || !password || !confirmPassword) {
-    return { error: "All fields are required." };
+  if (validationError) {
+    return { error: validationError };
   }
-
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
-  }
-
-  if (password !== confirmPassword) {
-    return { error: "Passwords do not match." };
-  }
-
-  const { hasAdminCredentials, createAdminClient } = await import(
-    "@/lib/supabase/admin"
-  );
 
   if (hasAdminCredentials()) {
     const admin = createAdminClient();
 
     const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password,
+      email: fields.email,
+      password: fields.password,
       email_confirm: true,
       user_metadata: {
-        full_name: name,
+        full_name: fields.fullName,
+        phone: fields.phone,
+        delivery_address: fields.deliveryAddress,
+        city: fields.city,
       },
     });
 
@@ -68,28 +63,29 @@ export async function registerUser(
       return { error: "Unable to create account. Please try again." };
     }
 
-    const { error: profileError } = await admin.from("profiles").upsert(
-      {
-        id: data.user.id,
-        full_name: name,
-        email,
-      },
-      { onConflict: "id" },
+    const { error: setupError } = await setupRegistrationProfile(
+      admin,
+      data.user.id,
+      fields.email,
+      fields,
     );
 
-    if (profileError) {
-      console.error("Profile upsert failed:", profileError.message);
+    if (setupError) {
+      console.error("Registration setup failed:", setupError);
     }
   } else {
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
 
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: fields.email,
+      password: fields.password,
       options: {
         data: {
-          full_name: name,
+          full_name: fields.fullName,
+          phone: fields.phone,
+          delivery_address: fields.deliveryAddress,
+          city: fields.city,
         },
       },
     });
@@ -102,17 +98,15 @@ export async function registerUser(
       return { error: "Unable to create account. Please try again." };
     }
 
-    const { error: profileError } = await supabase.from("profiles").upsert(
-      {
-        id: data.user.id,
-        full_name: name,
-        email,
-      },
-      { onConflict: "id" },
+    const { error: setupError } = await setupRegistrationProfile(
+      supabase,
+      data.user.id,
+      fields.email,
+      fields,
     );
 
-    if (profileError) {
-      console.error("Profile upsert failed:", profileError.message);
+    if (setupError) {
+      console.error("Registration setup failed:", setupError);
     }
 
     if (data.session) {

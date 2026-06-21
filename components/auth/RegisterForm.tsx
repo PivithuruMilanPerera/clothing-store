@@ -20,16 +20,40 @@ export function RegisterForm() {
       <Input
         label="Full Name"
         type="text"
-        name="name"
+        name="fullName"
         autoComplete="name"
         required
         disabled={isPending}
       />
       <Input
-        label="Email"
+        label="Email Address"
         type="email"
         name="email"
         autoComplete="email"
+        required
+        disabled={isPending}
+      />
+      <Input
+        label="Phone Number"
+        type="tel"
+        name="phone"
+        autoComplete="tel"
+        required
+        disabled={isPending}
+      />
+      <Input
+        label="Delivery Address"
+        type="text"
+        name="deliveryAddress"
+        autoComplete="street-address"
+        required
+        disabled={isPending}
+      />
+      <Input
+        label="City / Location"
+        type="text"
+        name="city"
+        autoComplete="address-level2"
         required
         disabled={isPending}
       />

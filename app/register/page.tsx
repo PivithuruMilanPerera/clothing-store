@@ -10,7 +10,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       title="Create Account"
-      description="Join VELVORZ for curated collections and exclusive access."
+      description="Join VELVORZ. All fields are required."
       alternatePrompt="Already have an account?"
       alternateHref="/login"
       alternateLabel="Sign in"
