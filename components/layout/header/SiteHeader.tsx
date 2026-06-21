@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import logo from "@/public/logo.png";
 import { CartLink } from "./CartLink";
+import { HeaderAccountLink } from "./HeaderAccountLink";
 import { HeaderNav } from "./HeaderNav";
 import { HeaderSearch } from "./HeaderSearch";
 
@@ -49,13 +50,7 @@ export function SiteHeader({ variant = "solid", className }: SiteHeaderProps) {
           )}
         >
           <HeaderSearch isTransparent={isTransparent} />
-          <Link
-            href="/login"
-            aria-label="Account"
-            className="hover:opacity-70"
-          >
-            <UserIcon className="h-5 w-5" />
-          </Link>
+          <HeaderAccountLink isTransparent={isTransparent} />
           <CartLink />
         </div>
       </Container>

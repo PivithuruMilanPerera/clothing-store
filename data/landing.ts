@@ -1,5 +1,7 @@
 import type { Category, FooterColumn, NavLink, Product } from "@/lib/types";
 import kids from "@/app/assets/category/kids-image.jpg";
+import bag from "@/app/assets/category/bag.jpg";
+import women from "@/app/assets/category/women.webp";
 import heroimage1 from "@/app/assets/hero-slider/image1.png";
 import heroimage2 from "@/app/assets/hero-slider/image2.png";
 import heroimage3 from "@/app/assets/hero-slider/image3.png";
@@ -59,7 +61,7 @@ export const categories: Category[] = [
     id: "women",
     name: "Women",
     image:
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=900&q=80",
+      women.src,
     href: "/women",
   },
   {
@@ -72,7 +74,7 @@ export const categories: Category[] = [
     id: "accessories",
     name: "Accessories",
     image:
-      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=900&q=80",
+      bag.src,
     href: "/accessories",
   },
 ];
@@ -88,6 +90,7 @@ export const footerColumns: FooterColumn[] = [
   {
     title: "Support",
     links: [
+      { label: "About Us", href: "/about" },
       { label: "Shipping", href: "/shipping" },
       { label: "Returns", href: "/returns" },
       { label: "Contact", href: "/contact" },

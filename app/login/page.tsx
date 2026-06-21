@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { AuthLayout } from "@/components/auth";
-import { Button, Input } from "@/components/ui";
+import { redirect } from "next/navigation";
+import { AuthLayout, LoginForm } from "@/components/auth";
+import { getSessionUser, sanitizeRedirectPath } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Sign In | VELVORZ",
@@ -8,12 +9,19 @@ export const metadata: Metadata = {
 };
 
 type LoginPageProps = {
-  searchParams: Promise<{ registered?: string }>;
+  searchParams: Promise<{ registered?: string; redirect?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { registered } = await searchParams;
+  const user = await getSessionUser();
+
+  if (user) {
+    redirect("/account");
+  }
+
+  const { registered, redirect: redirectParam } = await searchParams;
   const showRegisteredMessage = registered === "1";
+  const redirectTo = sanitizeRedirectPath(redirectParam);
 
   return (
     <AuthLayout
@@ -29,25 +37,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </p>
       ) : null}
 
-      <form className="flex flex-col gap-6" action="/login" method="post">
-        <Input
-          label="Email"
-          type="email"
-          name="email"
-          autoComplete="email"
-          required
-        />
-        <Input
-          label="Password"
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          required
-        />
-        <Button type="submit" className="mt-2 w-full">
-          Sign In
-        </Button>
-      </form>
+      <LoginForm redirectTo={redirectTo} />
     </AuthLayout>
   );
 }
