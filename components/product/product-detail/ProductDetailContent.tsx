@@ -6,19 +6,12 @@ import { useState } from "react";
 import { useCart } from "@/components/cart";
 import { ChevronDownIcon } from "@/components/icons";
 import { Button } from "@/components/ui";
-import { colorLabels } from "@/lib/cart";
+import { colorLabels, colorSwatchStyles } from "@/lib/cart";
 import type { ProductColor, ProductDetail, ProductSize } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 type ProductDetailContentProps = {
   product: ProductDetail;
-};
-
-const colorSwatchStyles: Record<ProductColor, string> = {
-  black: "bg-black",
-  white: "bg-white",
-  gray: "bg-neutral-400",
-  cream: "bg-[#f0ebe3]",
 };
 
 type AccordionItemProps = {
@@ -34,7 +27,7 @@ function AccordionItem({ title, content, isOpen, onToggle }: AccordionItemProps)
       <button
         type="button"
         onClick={onToggle}
-        className="type-label-uppercase flex w-full items-center justify-between py-4 text-left text-on-surface"
+        className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none flex w-full items-center justify-between py-4 text-left text-on-surface"
         aria-expanded={isOpen}
       >
         {title}
@@ -46,7 +39,7 @@ function AccordionItem({ title, content, isOpen, onToggle }: AccordionItemProps)
         />
       </button>
       {isOpen ? (
-        <p className="type-body-md pb-4 text-on-surface-variant">{content}</p>
+        <p className="font-body text-base leading-normal pb-4 text-on-surface-variant">{content}</p>
       ) : null}
     </div>
   );
@@ -139,15 +132,15 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
       </div>
 
       <div className="flex flex-col">
-        <h1 className="type-headline-lg-mobile md:type-headline-lg text-on-surface">
+        <h1 className="font-headline text-[2rem] font-extrabold leading-tight uppercase md:text-5xl md:tracking-tight text-on-surface">
           {product.name}
         </h1>
-        <p className="type-body-lg mt-3 font-medium tabular-nums text-on-surface md:mt-4">
-          ${product.price.toFixed(2)}
+        <p className="font-body text-lg leading-relaxed mt-3 font-medium tabular-nums text-on-surface md:mt-4">
+          {formatPrice(product.price)}
         </p>
 
         <div className="mt-8 border-t border-outline-variant pt-8">
-          <p className="type-label-uppercase text-on-surface">
+          <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
             Color: {colorLabels[selectedColor]}
           </p>
           <div className="mt-3 flex gap-2">
@@ -174,12 +167,12 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
 
         <div className="mt-8">
           <div className="flex items-center justify-between gap-4">
-            <p className="type-label-uppercase text-on-surface">
+            <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
               Size: {selectedSize}
             </p>
             <button
               type="button"
-              className="type-body-md text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+              className="font-body text-base leading-normal text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
             >
               Size Guide
             </button>
@@ -197,7 +190,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
                     setSizeError(false);
                   }}
                   className={cn(
-                    "type-label-uppercase min-w-12 border px-4 py-2.5 transition-colors",
+                    "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none min-w-12 border px-4 py-2.5 transition-colors",
                     isActive
                       ? "border-primary bg-primary text-on-primary"
                       : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary",
@@ -215,12 +208,12 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
           Add to Cart
         </Button>
         {sizeError ? (
-          <p className="type-body-md mt-2 text-error">
+          <p className="font-body text-base leading-normal mt-2 text-error">
             Please select a size before adding to cart.
           </p>
         ) : null}
 
-        <p className="type-body-md mt-8 text-on-surface-variant">
+        <p className="font-body text-base leading-normal mt-8 text-on-surface-variant">
           {product.description}
         </p>
 

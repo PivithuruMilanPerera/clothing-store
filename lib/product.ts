@@ -10,7 +10,7 @@ const DEFAULT_MATERIALS_CARE =
   "100% premium cotton. Machine wash cold with like colors. Tumble dry low. Do not bleach. Iron on low heat if needed.";
 
 const DEFAULT_SHIPPING_RETURNS =
-  "Free standard shipping on orders over $150. Express delivery available at checkout. Returns accepted within 30 days in original condition.";
+  "Free standard shipping on orders over Rs. 150. Express delivery available at checkout. Returns accepted within 30 days in original condition.";
 
 export function slugFromHref(href: string): string {
   return href.replace(/^\/products\//, "");

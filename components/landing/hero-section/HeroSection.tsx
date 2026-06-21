@@ -20,7 +20,7 @@ export function HeroSection() {
 
   return (
     <section
-      className="w-full bg-surface-container-lowest pt-4 md:pt-6"
+      className="w-full bg-surface-container-lowest pt-4"
       style={
         {
           "--hero-slide-duration": `${HERO_SLIDE_DURATION_MS}ms`,
@@ -92,10 +92,10 @@ export function HeroSection() {
                   <div className="hero-slide-overlay absolute inset-0 bg-primary/25" />
 
                   <div className="hero-slide-content relative flex h-full flex-col items-start justify-end p-5 md:p-8">
-                    <p className="type-label-uppercase mb-2 text-on-primary/80 md:mb-3">
+                    <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none mb-2 text-on-primary/80 md:mb-3">
                       New Collection
                     </p>
-                    <h1 className="type-display-xl max-w-[11rem] text-balance text-on-primary sm:max-w-[13rem] md:max-w-[16rem]">
+                    <h1 className="font-headline text-[clamp(2rem,6vw,5rem)] font-black leading-none tracking-tighter uppercase max-w-[11rem] text-balance text-on-primary sm:max-w-[13rem] md:max-w-[16rem]">
                       {slide.headline}
                     </h1>
                     <div className="mt-4 md:mt-5">

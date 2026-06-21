@@ -18,8 +18,8 @@ export default async function ReturnsPage() {
 
   return (
     <div>
-      <h2 className="type-headline-md text-on-surface">Return Requests</h2>
-      <p className="type-body-md mt-2 text-on-surface-variant">
+      <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Return Requests</h2>
+      <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
         Request a return for eligible orders and track existing requests.
       </p>
       <div className="mt-8">

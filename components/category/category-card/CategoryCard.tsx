@@ -33,7 +33,7 @@ export function CategoryCard({ category, className }: CategoryCardProps) {
         {category.name}
       </span>
 
-      <h3 className="type-headline-md absolute bottom-5 left-5 uppercase text-on-primary transition-transform duration-300 group-hover:-translate-y-1 md:bottom-6 md:left-6">
+      <h3 className="text-lg lg:text-2xl font-bold absolute bottom-5 left-5 uppercase text-on-primary transition-transform duration-300 group-hover:-translate-y-1 md:bottom-6 md:left-6">
         {category.name}
       </h3>
     </Link>

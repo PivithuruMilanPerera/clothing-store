@@ -9,6 +9,13 @@ export const colorLabels: Record<ProductColor, string> = {
   cream: "Cream",
 };
 
+export const colorSwatchStyles: Record<ProductColor, string> = {
+  black: "bg-black",
+  white: "bg-white",
+  gray: "bg-neutral-400",
+  cream: "bg-[#f0ebe3]",
+};
+
 export function createCartItemId(
   slug: string,
   color: ProductColor,

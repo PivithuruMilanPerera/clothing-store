@@ -69,7 +69,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="type-label-uppercase text-on-surface">
+                  <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
                     {address.label}
                     {address.is_default ? (
                       <span className="ml-2 text-on-surface-variant">
@@ -77,7 +77,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
                       </span>
                     ) : null}
                   </p>
-                  <div className="type-body-md mt-3 space-y-1 text-on-surface-variant">
+                  <div className="font-body text-base leading-normal mt-3 space-y-1 text-on-surface-variant">
                     {formatAddress(address).map((line) => (
                       <p key={line}>{line}</p>
                     ))}
@@ -110,7 +110,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
         </ul>
       ) : (
         <div className="border border-outline-variant bg-surface-container-lowest p-8 text-center">
-          <p className="type-body-md text-on-surface-variant">
+          <p className="font-body text-base leading-normal text-on-surface-variant">
             You have not saved any addresses yet.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
         </Button>
       ) : (
         <div className="border border-outline-variant bg-surface-container-lowest p-6 md:p-8">
-          <h3 className="type-headline-md text-on-surface">
+          <h3 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">
             {editingAddress ? "Edit Address" : "New Address"}
           </h3>
 
@@ -204,7 +204,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
               disabled={isPending}
             />
 
-            <label className="type-body-md flex items-center gap-3 text-on-surface md:col-span-2">
+            <label className="font-body text-base leading-normal flex items-center gap-3 text-on-surface md:col-span-2">
               <input
                 type="checkbox"
                 name="isDefault"
@@ -216,13 +216,13 @@ export function AddressManager({ addresses }: AddressManagerProps) {
             </label>
 
             {state?.error ? (
-              <p className="type-body-md text-error md:col-span-2" role="alert">
+              <p className="font-body text-base leading-normal text-error md:col-span-2" role="alert">
                 {state.error}
               </p>
             ) : null}
 
             {state?.success ? (
-              <p className="type-body-md text-on-surface md:col-span-2" role="status">
+              <p className="font-body text-base leading-normal text-on-surface md:col-span-2" role="status">
                 {state.success}
               </p>
             ) : null}

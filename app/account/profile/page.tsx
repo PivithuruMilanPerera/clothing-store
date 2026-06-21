@@ -13,8 +13,8 @@ export default async function ProfilePage() {
   if (!profile) {
     return (
       <div>
-        <h2 className="type-headline-md text-on-surface">Profile</h2>
-        <p className="type-body-md mt-4 text-on-surface-variant">
+        <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Profile</h2>
+        <p className="font-body text-base leading-normal mt-4 text-on-surface-variant">
           Unable to load your profile. Please try again later.
         </p>
       </div>
@@ -23,8 +23,8 @@ export default async function ProfilePage() {
 
   return (
     <div>
-      <h2 className="type-headline-md text-on-surface">Profile</h2>
-      <p className="type-body-md mt-2 text-on-surface-variant">
+      <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Profile</h2>
+      <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
         Update your name and contact information.
       </p>
       <div className="mt-8">

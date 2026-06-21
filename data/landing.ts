@@ -1,16 +1,81 @@
 import type { Category, FooterColumn, NavLink, Product } from "@/lib/types";
 import kids from "@/app/assets/category/kids-image.jpg";
-import bag from "@/app/assets/category/bag.jpg";
+import bag from "@/app/assets/category/bags.jpg";
 import women from "@/app/assets/category/women.webp";
 import heroimage1 from "@/app/assets/hero-slider/image1.png";
 import heroimage2 from "@/app/assets/hero-slider/image2.png";
 import heroimage3 from "@/app/assets/hero-slider/image3.png";
+import men from "@/app/assets/category/man.jpg";
 
 export const navLinks: NavLink[] = [
+  { label: "Home", href: "/" },
   { label: "Men", href: "/men" },
   { label: "Women", href: "/women" },
   { label: "Kids", href: "/kids" },
   { label: "Accessories", href: "/accessories" },
+  { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
+];
+
+const brandLogoPlaceholder =
+  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10";
+
+export const brandLogos = [
+  { id: "brand-1", name: "Brand 1", image: brandLogoPlaceholder },
+  { id: "brand-2", name: "Brand 2", image: brandLogoPlaceholder },
+  { id: "brand-3", name: "Brand 3", image: brandLogoPlaceholder },
+  { id: "brand-4", name: "Brand 4", image: brandLogoPlaceholder },
+  { id: "brand-5", name: "Brand 5", image: brandLogoPlaceholder },
+  { id: "brand-6", name: "Brand 6", image: brandLogoPlaceholder },
+  { id: "brand-7", name: "Brand 7", image: brandLogoPlaceholder },
+  { id: "brand-8", name: "Brand 8", image: brandLogoPlaceholder },
+];
+
+export const preOrderProducts: Product[] = [
+  {
+    id: "linen-dress",
+    brand: "Velvorz",
+    name: "Structured Linen Dress",
+    price: 195,
+    image:
+      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80",
+    href: "/products/structured-linen-dress",
+    badge: "PRE ORDER",
+    colors: ["cream"],
+  },
+  {
+    id: "wool-coat",
+    brand: "Velvorz",
+    name: "Minimal Wool Coat",
+    price: 320,
+    image:
+      "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=800&q=80",
+    href: "/products/minimal-wool-coat",
+    badge: "PRE ORDER",
+    colors: ["gray"],
+  },
+  {
+    id: "leather-belt",
+    brand: "Velvorz",
+    name: "Minimal Leather Belt",
+    price: 85,
+    image:
+      "https://images.unsplash.com/photo-1624222247344-550fb60583fd?w=800&q=80",
+    href: "/products/minimal-leather-belt",
+    badge: "PRE ORDER",
+    colors: ["black"],
+  },
+  {
+    id: "canvas-tote",
+    brand: "Velvorz",
+    name: "Structured Canvas Tote",
+    price: 110,
+    image:
+      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80",
+    href: "/products/structured-canvas-tote",
+    badge: "PRE ORDER",
+    colors: ["cream", "black"],
+  },
 ];
 
 export const newArrivals: Product[] = [
@@ -21,6 +86,7 @@ export const newArrivals: Product[] = [
     price: 120,
     image: "/temp/hoodie.png",
     href: "/products/signature-oversized-hoodie",
+    colors: ["black", "white"],
   },
   {
     id: "sneakers",
@@ -30,6 +96,7 @@ export const newArrivals: Product[] = [
     image: "/temp/shoo.png",
     href: "/products/monolith-leather-sneakers",
     badge: "NEW",
+    colors: ["white", "black"],
   },
   {
     id: "tee",
@@ -38,6 +105,7 @@ export const newArrivals: Product[] = [
     price: 65,
     image: "/temp/t.png",
     href: "/products/essential-cotton-tee",
+    colors: ["black", "white"],
   },
   {
     id: "trousers",
@@ -46,6 +114,7 @@ export const newArrivals: Product[] = [
     price: 185,
     image: "/temp/screen.png",
     href: "/products/structured-cargo-trousers",
+    colors: ["black", "gray"],
   },
 ];
 
@@ -54,7 +123,7 @@ export const categories: Category[] = [
     id: "men",
     name: "Men",
     image:
-      "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=900&q=80",
+      men.src,
     href: "/men",
   },
   {

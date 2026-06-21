@@ -35,7 +35,7 @@ export default async function AdminLoginPage({
       alternateLabel="Home"
     >
       {showUnauthorizedMessage ? (
-        <p className="type-body-md mb-6 text-center text-error" role="alert">
+        <p className="font-body text-base leading-normal mb-6 text-center text-error" role="alert">
           Admin access is required to view that page.
         </p>
       ) : null}

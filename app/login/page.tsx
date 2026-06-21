@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       alternateLabel="Create one"
     >
       {showRegisteredMessage ? (
-        <p className="type-body-md mb-6 text-center text-on-surface" role="status">
+        <p className="font-body text-base leading-normal mb-6 text-center text-on-surface" role="status">
           Account created successfully. Please sign in.
         </p>
       ) : null}

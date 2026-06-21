@@ -12,8 +12,8 @@ export default async function AddressesPage() {
 
   return (
     <div>
-      <h2 className="type-headline-md text-on-surface">Addresses</h2>
-      <p className="type-body-md mt-2 text-on-surface-variant">
+      <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Addresses</h2>
+      <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
         Save addresses for faster checkout.
       </p>
       <div className="mt-8">

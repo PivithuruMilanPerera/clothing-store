@@ -10,7 +10,7 @@ export function Badge({ children, className }: BadgeProps) {
   return (
     <span
       className={cn(
-        "type-label-uppercase bg-primary px-2 py-1 text-on-primary",
+        "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none bg-primary px-2 py-1 text-on-primary",
         className,
       )}
     >

@@ -82,11 +82,11 @@ export function HeaderSearch({ isTransparent = false }: HeaderSearchProps) {
                 name="q"
                 placeholder="Search products..."
                 autoComplete="off"
-                className="type-body-md min-w-0 flex-1 bg-transparent text-on-surface outline-none placeholder:text-on-surface-variant"
+                className="font-body text-base leading-normal min-w-0 flex-1 bg-transparent text-on-surface outline-none placeholder:text-on-surface-variant"
               />
               <button
                 type="submit"
-                className="type-label-uppercase shrink-0 text-primary hover:opacity-70"
+                className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none shrink-0 text-primary hover:opacity-70"
               >
                 Search
               </button>

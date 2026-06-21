@@ -25,10 +25,10 @@ export function AccountNav() {
                 : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary",
             )}
           >
-            <span className="type-label-uppercase block">{item.label}</span>
+            <span className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none block">{item.label}</span>
             <span
               className={cn(
-                "type-body-md mt-1 block text-sm",
+                "font-body text-base leading-normal mt-1 block text-sm",
                 isActive ? "text-on-primary/80" : "text-on-surface-variant",
               )}
             >

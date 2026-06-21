@@ -34,10 +34,10 @@ export default async function AccountLayout({ children }: AccountLayoutProps) {
       <main className="bg-surface-container-lowest py-10 md:py-14">
         <Container>
           <div className="border-b border-outline-variant pb-6 md:pb-8">
-            <p className="type-label-uppercase text-on-surface-variant">
+            <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
               My Account
             </p>
-            <h1 className="type-headline-lg-mobile md:type-headline-lg mt-2 text-on-surface">
+            <h1 className="font-headline text-[2rem] font-extrabold leading-tight uppercase md:text-5xl md:tracking-tight mt-2 text-on-surface">
               Hello, {displayName.split(" ")[0]}
             </h1>
           </div>

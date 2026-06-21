@@ -14,20 +14,23 @@ export function HeaderNav({ isTransparent = false }: HeaderNavProps) {
 
   return (
     <nav
-      className="absolute left-1/2 hidden -translate-x-1/2 md:block"
+      className="absolute left-1/2 hidden -translate-x-1/2 lg:block"
       aria-label="Main navigation"
     >
-      <ul className="flex items-center gap-8">
+      <ul className="flex items-center gap-6 xl:gap-8">
         {navLinks.map((link) => {
           const isActive =
-            pathname === link.href || pathname.startsWith(`${link.href}/`);
+            link.href === "/"
+              ? pathname === "/"
+              : pathname === link.href ||
+                pathname.startsWith(`${link.href}/`);
 
           return (
             <li key={link.href}>
               <Link
                 href={link.href}
                 className={cn(
-                  "type-label-uppercase hover:opacity-70",
+                  "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none hover:opacity-70",
                   isTransparent ? "text-on-primary" : "text-on-surface",
                   isActive &&
                     "underline decoration-1 underline-offset-8",
