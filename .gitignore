@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local landing uploads (images are stored in Supabase)
+/public/uploads/landing/*
+!/public/uploads/landing/.gitkeep
