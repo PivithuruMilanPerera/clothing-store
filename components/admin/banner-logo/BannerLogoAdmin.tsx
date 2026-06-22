@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { saveBannerLogoContent } from "@/app/admin/(dashboard)/banner-logo/actions";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Popup } from "@/components/ui";
 import { useLandingImageUploader } from "@/hooks/useLandingImageUploader";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
@@ -56,9 +56,7 @@ function ImageUploadField({
       <div
         className={cn(
           "relative w-full overflow-hidden rounded-lg border border-outline-variant bg-surface-container-low",
-          variant === "mobile"
-            ? "mx-auto aspect-[9/16] max-w-[180px]"
-            : "h-36",
+          variant === "mobile" ? "mx-auto aspect-[9/16] max-w-[180px]" : "h-36",
         )}
       >
         {imageUrl ? (
@@ -66,14 +64,33 @@ function ImageUploadField({
             src={imageUrl}
             alt=""
             fill
-            className="object-cover"
+            className={cn("object-cover", isUploading && "opacity-40")}
             sizes="(max-width: 768px) 100vw, 320px"
           />
         ) : (
-          <div className="flex h-full items-center justify-center font-body text-sm text-on-surface-variant">
+          <div
+            className={cn(
+              "flex h-full items-center justify-center font-body text-sm text-on-surface-variant",
+              isUploading && "opacity-40",
+            )}
+          >
             No image selected
           </div>
         )}
+
+        {isUploading ? (
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-container-lowest/70"
+            role="status"
+            aria-live="polite"
+            aria-label="Uploading image"
+          >
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary" />
+            <span className="font-label text-[10px] font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
+              Uploading...
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <input
@@ -105,22 +122,15 @@ function ImageUploadField({
 type BannerPreviewProps = {
   slide: HeroSlide;
   index: number;
-  isEditing: boolean;
   onEdit: () => void;
   onRemove: () => void;
 };
 
-function BannerPreview({
-  slide,
-  index,
-  isEditing,
-  onEdit,
-  onRemove,
-}: BannerPreviewProps) {
+function BannerPreview({ slide, index, onEdit, onRemove }: BannerPreviewProps) {
   return (
     <article className="rounded-lg border border-outline-variant bg-surface-container-lowest p-5 md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex min-w-0 flex-1 gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-4 md:flex-row">
           <div className="flex shrink-0 gap-2">
             <div className="space-y-1">
               <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
@@ -182,18 +192,16 @@ function BannerPreview({
                 CTA: {slide.cta?.label || "—"} → {slide.cta?.href || "—"}
               </p>
             ) : (
-              <p className="font-body text-sm text-on-surface-variant">No CTA</p>
+              <p className="font-body text-sm text-on-surface-variant">
+                No CTA
+              </p>
             )}
           </div>
         </div>
 
         <div className="flex shrink-0 gap-2">
-          <Button
-            type="button"
-            variant={isEditing ? "primary" : "ghost"}
-            onClick={onEdit}
-          >
-            {isEditing ? "Cancel" : "Edit"}
+          <Button type="button" variant="ghost" onClick={onEdit}>
+            Edit
           </Button>
           <Button type="button" variant="ghost" onClick={onRemove}>
             Remove
@@ -206,21 +214,13 @@ function BannerPreview({
 
 type BannerEditFormProps = {
   slide: HeroSlide;
-  isSaving: boolean;
-  onSave: () => void;
-  onCancel: () => void;
 };
 
-function BannerEditForm({
-  slide,
-  isSaving,
-  onSave,
-  onCancel,
-}: BannerEditFormProps) {
+function BannerEditForm({ slide }: BannerEditFormProps) {
   const dispatch = useAppDispatch();
 
   return (
-    <div className="mt-4 space-y-6 rounded-lg border border-outline-variant bg-surface-container-low p-5 md:p-6">
+    <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
         <ImageUploadField
           label="Desktop Banner Image"
@@ -297,15 +297,6 @@ function BannerEditForm({
           }
         />
       </div>
-
-      <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant pt-4">
-        <Button type="button" variant="ghost" disabled={isSaving} onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="button" disabled={isSaving} onClick={onSave}>
-          {isSaving ? "Saving..." : "Save Banner"}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -313,18 +304,11 @@ function BannerEditForm({
 type LogoPreviewProps = {
   logo: BrandLogo;
   index: number;
-  isEditing: boolean;
   onEdit: () => void;
   onRemove: () => void;
 };
 
-function LogoPreview({
-  logo,
-  index,
-  isEditing,
-  onEdit,
-  onRemove,
-}: LogoPreviewProps) {
+function LogoPreview({ logo, index, onEdit, onRemove }: LogoPreviewProps) {
   return (
     <article className="rounded-lg border border-outline-variant bg-surface-container-lowest p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -356,12 +340,8 @@ function LogoPreview({
         </div>
 
         <div className="flex shrink-0 gap-2">
-          <Button
-            type="button"
-            variant={isEditing ? "primary" : "ghost"}
-            onClick={onEdit}
-          >
-            {isEditing ? "Cancel" : "Edit"}
+          <Button type="button" variant="ghost" onClick={onEdit}>
+            Edit
           </Button>
           <Button type="button" variant="ghost" onClick={onRemove}>
             Remove
@@ -374,16 +354,13 @@ function LogoPreview({
 
 type LogoEditFormProps = {
   logo: BrandLogo;
-  isSaving: boolean;
-  onSave: () => void;
-  onCancel: () => void;
 };
 
-function LogoEditForm({ logo, isSaving, onSave, onCancel }: LogoEditFormProps) {
+function LogoEditForm({ logo }: LogoEditFormProps) {
   const dispatch = useAppDispatch();
 
   return (
-    <div className="mt-4 space-y-4 rounded-lg border border-outline-variant bg-surface-container-low p-5">
+    <div className="space-y-4">
       <Input
         label="Brand Name"
         placeholder="e.g. Nike"
@@ -405,21 +382,34 @@ function LogoEditForm({ logo, isSaving, onSave, onCancel }: LogoEditFormProps) {
           dispatch(updateBrandLogo({ id: logo.id, changes: { image: url } }))
         }
       />
-
-      <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant pt-4">
-        <Button type="button" variant="ghost" disabled={isSaving} onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="button" disabled={isSaving} onClick={onSave}>
-          {isSaving ? "Saving..." : "Save Logo"}
-        </Button>
-      </div>
     </div>
   );
 }
 
+function isEmptyHeroSlide(slide: HeroSlide) {
+  return (
+    !slide.image &&
+    !slide.mobileImage &&
+    !slide.headline &&
+    !slide.keyTag &&
+    !slide.cta?.label &&
+    !slide.cta?.href
+  );
+}
+
+function isEmptyBrandLogo(logo: BrandLogo) {
+  return !logo.name && !logo.image;
+}
+
+type PendingRemove =
+  | { type: "banner"; id: string; label: string }
+  | { type: "logo"; id: string; label: string };
+
 export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
   const dispatch = useAppDispatch();
+  const [pendingRemove, setPendingRemove] = useState<PendingRemove | null>(
+    null,
+  );
   const {
     heroSlides,
     brandLogos,
@@ -434,6 +424,13 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
   useEffect(() => {
     dispatch(initializeContent(initialContent));
   }, [dispatch, initialContent]);
+
+  const editingHeroSlide = heroSlides.find(
+    (slide) => slide.id === editingHeroSlideId,
+  );
+  const editingBrandLogo = brandLogos.find(
+    (logo) => logo.id === editingBrandLogoId,
+  );
 
   async function handleSave() {
     dispatch(clearSaveResult());
@@ -457,29 +454,60 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
 
   function handleCancelEdit() {
     dispatch(clearSaveResult());
+
+    if (editingHeroSlideId) {
+      const slide = heroSlides.find((item) => item.id === editingHeroSlideId);
+      if (slide && isEmptyHeroSlide(slide)) {
+        dispatch(removeHeroSlide(editingHeroSlideId));
+      }
+    }
+
+    if (editingBrandLogoId) {
+      const logo = brandLogos.find((item) => item.id === editingBrandLogoId);
+      if (logo && isEmptyBrandLogo(logo)) {
+        dispatch(removeBrandLogo(editingBrandLogoId));
+      }
+    }
+
     dispatch(setEditingHeroSlide(null));
     dispatch(setEditingBrandLogo(null));
   }
 
-  const isEditing = Boolean(editingHeroSlideId || editingBrandLogoId);
+  function handleConfirmRemove() {
+    if (!pendingRemove) return;
+
+    if (pendingRemove.type === "banner") {
+      dispatch(removeHeroSlide(pendingRemove.id));
+    } else {
+      dispatch(removeBrandLogo(pendingRemove.id));
+    }
+
+    setPendingRemove(null);
+  }
+
+  const bannerPopupTitle = editingHeroSlide
+    ? isEmptyHeroSlide(editingHeroSlide)
+      ? "Add Banner"
+      : "Edit Banner"
+    : "Banner";
+
+  const logoPopupTitle = editingBrandLogo
+    ? isEmptyBrandLogo(editingBrandLogo)
+      ? "Add Logo"
+      : "Edit Logo"
+    : "Logo";
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 border-b border-outline-variant pb-6 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">
-            Banner & Logo
-          </h2>
-          <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
-            Manage hero banners and brand logos shown on the homepage. Desktop
-            and mobile banner images are required; key tag, headline, and CTA
-            are optional.
-          </p>
-        </div>
-
-        <Button type="button" disabled={isSaving} onClick={handleSave}>
-          {isSaving ? "Saving..." : "Save Changes"}
-        </Button>
+      <div className="border-b border-outline-variant pb-6">
+        <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">
+          Banner & Logo
+        </h2>
+        <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
+          Manage hero banners and brand logos shown on the homepage. Desktop and
+          mobile banner images are required; key tag, headline, and CTA are
+          optional.
+        </p>
       </div>
 
       {saveMessage ? (
@@ -494,15 +522,15 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-6 py-2">
         <button
           type="button"
           onClick={() => dispatch(setActiveTab("banners"))}
           className={cn(
-            "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none border px-4 py-2",
+            "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none pb-1 transition-colors",
             activeTab === "banners"
-              ? "border-primary bg-primary text-on-primary"
-              : "border-outline-variant text-on-surface-variant",
+              ? "border-b-2 border-primary text-on-surface"
+              : "text-on-surface-variant hover:text-on-surface",
           )}
         >
           Hero Banners ({heroSlides.length})
@@ -511,10 +539,10 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
           type="button"
           onClick={() => dispatch(setActiveTab("logos"))}
           className={cn(
-            "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none border px-4 py-2",
+            "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none pb-1 transition-colors",
             activeTab === "logos"
-              ? "border-primary bg-primary text-on-primary"
-              : "border-outline-variant text-on-surface-variant",
+              ? "border-b-2 border-primary text-on-surface"
+              : "text-on-surface-variant hover:text-on-surface",
           )}
         >
           Brand Logos ({brandLogos.length})
@@ -524,7 +552,7 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
       {activeTab === "banners" ? (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button type="button" variant="ghost" onClick={() => dispatch(addHeroSlide())}>
+            <Button type="button" onClick={() => dispatch(addHeroSlide())}>
               Add Banner
             </Button>
           </div>
@@ -535,38 +563,26 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
             </p>
           ) : null}
 
-          {heroSlides.map((slide, index) => {
-            const isEditing = editingHeroSlideId === slide.id;
-
-            return (
-              <div key={slide.id}>
-                <BannerPreview
-                  slide={slide}
-                  index={index}
-                  isEditing={isEditing}
-                  onEdit={() =>
-                    dispatch(
-                      setEditingHeroSlide(isEditing ? null : slide.id),
-                    )
-                  }
-                  onRemove={() => dispatch(removeHeroSlide(slide.id))}
-                />
-                {isEditing ? (
-                  <BannerEditForm
-                    slide={slide}
-                    isSaving={isSaving}
-                    onSave={handleSave}
-                    onCancel={handleCancelEdit}
-                  />
-                ) : null}
-              </div>
-            );
-          })}
+          {heroSlides.map((slide, index) => (
+            <BannerPreview
+              key={slide.id}
+              slide={slide}
+              index={index}
+              onEdit={() => dispatch(setEditingHeroSlide(slide.id))}
+              onRemove={() =>
+                setPendingRemove({
+                  type: "banner",
+                  id: slide.id,
+                  label: slide.headline || `Banner ${index + 1}`,
+                })
+              }
+            />
+          ))}
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button type="button" variant="ghost" onClick={() => dispatch(addBrandLogo())}>
+            <Button type="button" onClick={() => dispatch(addBrandLogo())}>
               Add Logo
             </Button>
           </div>
@@ -578,47 +594,102 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
-            {brandLogos.map((logo, index) => {
-              const isEditing = editingBrandLogoId === logo.id;
-
-              return (
-                <div key={logo.id}>
-                  <LogoPreview
-                    logo={logo}
-                    index={index}
-                    isEditing={isEditing}
-                    onEdit={() =>
-                      dispatch(
-                        setEditingBrandLogo(isEditing ? null : logo.id),
-                      )
-                    }
-                    onRemove={() => dispatch(removeBrandLogo(logo.id))}
-                  />
-                  {isEditing ? (
-                    <LogoEditForm
-                      logo={logo}
-                      isSaving={isSaving}
-                      onSave={handleSave}
-                      onCancel={handleCancelEdit}
-                    />
-                  ) : null}
-                </div>
-              );
-            })}
+            {brandLogos.map((logo, index) => (
+              <LogoPreview
+                key={logo.id}
+                logo={logo}
+                index={index}
+                onEdit={() => dispatch(setEditingBrandLogo(logo.id))}
+                onRemove={() =>
+                  setPendingRemove({
+                    type: "logo",
+                    id: logo.id,
+                    label: logo.name || `Logo ${index + 1}`,
+                  })
+                }
+              />
+            ))}
           </div>
         </div>
       )}
 
-      {isEditing ? (
-        <div className="sticky bottom-4 z-10 flex justify-end gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
-          <Button type="button" variant="ghost" disabled={isSaving} onClick={handleCancelEdit}>
-            Cancel
-          </Button>
-          <Button type="button" disabled={isSaving} onClick={handleSave}>
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
-      ) : null}
+      <Popup
+        open={Boolean(editingHeroSlide)}
+        onClose={handleCancelEdit}
+        title={bannerPopupTitle}
+        description="Upload desktop and mobile images. Key tag, headline, and CTA are optional."
+        size="lg"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isSaving}
+              onClick={handleCancelEdit}
+            >
+              Cancel
+            </Button>
+            <Button type="button" disabled={isSaving} onClick={handleSave}>
+              {isSaving ? "Saving..." : "Save Banner"}
+            </Button>
+          </div>
+        }
+      >
+        {editingHeroSlide ? <BannerEditForm slide={editingHeroSlide} /> : null}
+      </Popup>
+
+      <Popup
+        open={Boolean(editingBrandLogo)}
+        onClose={handleCancelEdit}
+        title={logoPopupTitle}
+        description="Add a brand name and upload the logo image."
+        size="md"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isSaving}
+              onClick={handleCancelEdit}
+            >
+              Cancel
+            </Button>
+            <Button type="button" disabled={isSaving} onClick={handleSave}>
+              {isSaving ? "Saving..." : "Save Logo"}
+            </Button>
+          </div>
+        }
+      >
+        {editingBrandLogo ? <LogoEditForm logo={editingBrandLogo} /> : null}
+      </Popup>
+
+      <Popup
+        open={Boolean(pendingRemove)}
+        onClose={() => setPendingRemove(null)}
+        title={
+          pendingRemove?.type === "banner" ? "Remove Banner" : "Remove Logo"
+        }
+        description={
+          pendingRemove
+            ? `Are you sure you want to remove "${pendingRemove.label}"? This action cannot be undone.`
+            : undefined
+        }
+        size="sm"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setPendingRemove(null)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleConfirmRemove}>
+              Remove
+            </Button>
+          </div>
+        }
+      />
     </div>
   );
 }

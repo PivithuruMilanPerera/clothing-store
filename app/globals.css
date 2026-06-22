@@ -134,7 +134,10 @@ body {
 }
 
 .logo-carousel-track {
-  animation: logo-carousel-scroll 30s linear infinite;
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: logo-carousel-scroll 35s linear infinite;
 }
 
 .logo-carousel:hover .logo-carousel-track {
@@ -154,5 +157,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .logo-carousel-track {
     animation: none;
+    will-change: auto;
   }
 }
