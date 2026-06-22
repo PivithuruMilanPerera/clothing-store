@@ -1,0 +1,100 @@
+{
+  "heroSlides": [
+    {
+      "id": "precision",
+      "headline": "Uncompromising Precision.",
+      "image": "/uploads/landing/1782108919500-b428bced.jpg",
+      "cta": {
+        "label": "Shop Collection",
+        "href": "/collection"
+      }
+    },
+    {
+      "id": "tailored-motion",
+      "headline": "Tailored Motion.",
+      "image": "/uploads/landing/1782108926360-13bd885d.jpg",
+      "cta": {
+        "label": "Shop Now",
+        "href": "/collection/tailored-motion"
+      }
+    },
+    {
+      "id": "summer-edit",
+      "headline": "Refined Essentials.",
+      "image": "/uploads/landing/1782108932456-739499b7.webp",
+      "cta": {
+        "label": "Explore",
+        "href": "/new-arrivals"
+      }
+    },
+    {
+      "id": "graphic-minimal",
+      "headline": "Graphic Minimal.",
+      "image": "/uploads/landing/1782108938069-50e8eece.webp",
+      "cta": {
+        "label": "Shop Now",
+        "href": "/collection/graphic-minimal"
+      }
+    },
+    {
+      "id": "street-form",
+      "headline": "Street Form.",
+      "image": "/uploads/landing/1782108966505-221d466a.jpg",
+      "cta": {
+        "label": "Discover",
+        "href": "/streetwear"
+      }
+    },
+    {
+      "id": "footwear-edit",
+      "headline": "Footwear Edit.",
+      "image": "/uploads/landing/1782108971485-e1aaa481.jpg",
+      "cta": {
+        "label": "Shop Now",
+        "href": "/collection/footwear-edit"
+      }
+    }
+  ],
+  "brandLogos": [
+    {
+      "id": "brand-1",
+      "name": "Engage",
+      "image": "/uploads/landing/1782108642819-1c3586b7.webp"
+    },
+    {
+      "id": "brand-2",
+      "name": "Brand 2",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+    },
+    {
+      "id": "brand-3",
+      "name": "Brand 3",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+    },
+    {
+      "id": "brand-4",
+      "name": "Brand 4",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+    },
+    {
+      "id": "brand-5",
+      "name": "Brand 5",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+    },
+    {
+      "id": "brand-6",
+      "name": "Brand 6",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+    },
+    {
+      "id": "brand-7",
+      "name": "Brand 7",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+    },
+    {
+      "id": "brand-8",
+      "name": "Brand 8",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+    }
+  ]
+}

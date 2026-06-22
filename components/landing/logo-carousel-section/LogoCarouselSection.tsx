@@ -1,8 +1,12 @@
 import Image from "next/image";
-import { brandLogos } from "@/data/landing";
+import type { BrandLogo } from "@/lib/types";
 
-export function LogoCarouselSection() {
-  const marqueeLogos = [...brandLogos, ...brandLogos];
+type LogoCarouselSectionProps = {
+  logos: BrandLogo[];
+};
+
+export function LogoCarouselSection({ logos }: LogoCarouselSectionProps) {
+  const marqueeLogos = [...logos, ...logos];
 
   return (
     <section
