@@ -7,19 +7,22 @@ import {
   ShopByCategorySection,
 } from "@/components/landing";
 import { SiteFooter, SiteHeader } from "@/components/layout";
+import { getLandingContent } from "@/lib/landing-content";
 
-export default function Home() {
+export default async function Home() {
+  const { heroSlides, brandLogos } = await getLandingContent();
+
   return (
     <>
       <SiteHeader />
-      <HeroSection />
+      <HeroSection slides={heroSlides} />
 
       <main>
      
         <NewArrivalsSection />
         <CodBannerSection />
         <ShopByCategorySection />
-        <LogoCarouselSection />
+        <LogoCarouselSection logos={brandLogos} />
         <PreOrderProductsSection />
       </main>
 

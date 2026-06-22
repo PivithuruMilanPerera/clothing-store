@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { adminSignOut } from "@/app/admin/actions";
+import { AdminNav } from "@/components/admin/AdminNav";
 import { SiteFooter, SiteHeader } from "@/components/layout";
+import { StoreProvider } from "@/components/providers/StoreProvider";
 import { Button, Container } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -54,7 +56,11 @@ export default async function AdminDashboardLayout({
             </form>
           </div>
 
-          <div className="mt-8">{children}</div>
+          <AdminNav />
+
+          <StoreProvider>
+            <div className="mt-8">{children}</div>
+          </StoreProvider>
         </Container>
       </main>
       <SiteFooter />

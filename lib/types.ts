@@ -148,3 +148,26 @@ export type Admin = {
   email: string;
   created_at: string;
 };
+
+export type HeroSlideCta = {
+  label: string;
+  href: string;
+};
+
+export type HeroSlide = {
+  id: string;
+  headline: string;
+  image: string;
+  cta: HeroSlideCta;
+};
+
+export type BrandLogo = {
+  id: string;
+  name: string;
+  image: string;
+};
+
+export type LandingContent = {
+  heroSlides: HeroSlide[];
+  brandLogos: BrandLogo[];
+};

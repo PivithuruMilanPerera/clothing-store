@@ -7,17 +7,20 @@ import { A11y, Autoplay, Pagination } from "swiper/modules";
 import type { Swiper as SwiperInstance } from "swiper";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { Button, IconButton } from "@/components/ui";
-import { heroSlides } from "@/data/landing";
+import type { HeroSlide } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import "swiper/css";
 
 const HERO_SLIDE_DURATION_MS = 6000;
 
-export function HeroSection() {
+type HeroSectionProps = {
+  slides: HeroSlide[];
+};
+
+export function HeroSection({ slides }: HeroSectionProps) {
   const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
   const heroHeightClass = "h-[68svh] md:h-[78svh]";
-  const hasMultipleSlides = heroSlides.length > 1;
-
+  const hasMultipleSlides = slides.length > 1;
   return (
     <section
       className="w-full bg-surface-container-lowest pt-4"
@@ -72,8 +75,7 @@ export function HeroSection() {
                 : false
             }
           >
-            {heroSlides.map((slide, index) => (
-              <SwiperSlide key={slide.id} className="!h-full">
+            {slides.map((slide, index) => (              <SwiperSlide key={slide.id} className="!h-full">
                 <article className="hero-slide-card relative h-full overflow-hidden rounded-2xl">
                   <Image
                     src={slide.image}
