@@ -27,21 +27,21 @@ export function AuthLayout({
         <Container className="flex flex-1 items-center justify-center py-16 md:py-24">
           <div className="w-full max-w-md">
             <div className="mb-10 text-center">
-              <h1 className="type-headline-lg-mobile md:type-headline-lg text-on-surface">
+              <h1 className="font-headline text-[2rem] font-extrabold leading-tight uppercase md:text-5xl md:tracking-tight text-on-surface">
                 {title}
               </h1>
-              <p className="type-body-md mt-4 text-on-surface-variant">
+              <p className="font-body text-base leading-normal mt-4 text-on-surface-variant">
                 {description}
               </p>
             </div>
 
             {children}
 
-            <p className="type-body-md mt-8 text-center text-on-surface-variant">
+            <p className="font-body text-base leading-normal mt-8 text-center text-on-surface-variant">
               {alternatePrompt}{" "}
               <Link
                 href={alternateHref}
-                className="type-label-uppercase text-primary underline-offset-4 hover:underline"
+                className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-primary underline-offset-4 hover:underline"
               >
                 {alternateLabel}
               </Link>

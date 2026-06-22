@@ -9,9 +9,10 @@ import {
   shopSizes,
 } from "@/data/shop";
 import type { ProductCategory, SortOption } from "@/lib/types";
+import { colorLabels, colorSwatchStyles } from "@/lib/cart";
 import { filterProducts, sortProducts } from "@/lib/shop";
-import { cn } from "@/lib/utils";
-import { ShopProductCard } from "./shop-product-card/ShopProductCard";
+import { cn, formatPrice } from "@/lib/utils";
+import { ProductCard } from "@/components/product";
 
 type ShopFiltersProps = {
   selectedCategories: ProductCategory[];
@@ -47,7 +48,7 @@ function ShopFilters({
                   onChange={() => onCategoryToggle(category.id)}
                   className="h-4 w-4 accent-primary"
                 />
-                <span className="type-body-md text-on-surface">
+                <span className="font-body text-base leading-normal text-on-surface">
                   {category.label}
                 </span>
               </label>
@@ -66,7 +67,7 @@ function ShopFilters({
                 type="button"
                 onClick={() => onSizeToggle(size)}
                 className={cn(
-                  "type-label-uppercase min-w-10 border px-3 py-2 transition-colors",
+                  "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none min-w-10 border px-3 py-2 transition-colors",
                   isActive
                     ? "border-primary bg-primary text-on-primary"
                     : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary",
@@ -80,23 +81,26 @@ function ShopFilters({
       </FilterSection>
 
       <FilterSection title="Color">
-        <ul className="space-y-3">
-          {shopColors.map((color) => (
-            <li key={color.id}>
-              <label className="flex cursor-pointer items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={selectedColors.includes(color.id)}
-                  onChange={() => onColorToggle(color.id)}
-                  className="h-4 w-4 accent-primary"
-                />
-                <span className="type-body-md text-on-surface">
-                  {color.label}
-                </span>
-              </label>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-wrap gap-2">
+          {shopColors.map((color) => {
+            const isActive = selectedColors.includes(color.id);
+
+            return (
+              <button
+                key={color.id}
+                type="button"
+                onClick={() => onColorToggle(color.id)}
+                className={cn(
+                  "h-8 w-8 border border-outline-variant transition-shadow hover:scale-110",
+                  colorSwatchStyles[color.id],
+                  isActive && "ring-1 ring-primary ring-offset-2",
+                )}
+                aria-label={colorLabels[color.id]}
+                aria-pressed={isActive}
+              />
+            );
+          })}
+        </div>
       </FilterSection>
 
       <FilterSection title="Price Range">
@@ -110,9 +114,15 @@ function ShopFilters({
             onChange={(e) => onMaxPriceChange(Number(e.target.value))}
             className="w-full accent-primary"
           />
-          <div className="type-body-md flex justify-between text-on-surface-variant">
-            <span>$0</span>
-            <span>${maxPrice >= maxShopPrice ? `${maxShopPrice}+` : maxPrice}</span>
+          <div className="font-body text-base leading-normal flex justify-between text-on-surface-variant">
+            <span>{formatPrice(0, { decimals: 0 })}</span>
+            <span>
+              {formatPrice(
+                maxPrice >= maxShopPrice ? maxShopPrice : maxPrice,
+                { decimals: 0 },
+              )}
+              {maxPrice >= maxShopPrice ? "+" : ""}
+            </span>
           </div>
         </div>
       </FilterSection>
@@ -129,7 +139,7 @@ function FilterSection({
 }) {
   return (
     <div className="border-b border-outline-variant pb-8 last:border-b-0">
-      <h2 className="type-label-uppercase mb-4 text-on-surface">{title}</h2>
+      <h2 className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none mb-4 text-on-surface">{title}</h2>
       {children}
     </div>
   );
@@ -186,34 +196,34 @@ export function ShopContent({ title, defaultCategories = [] }: ShopContentProps)
 
   return (
     <div>
-      <div className="mb-8 flex flex-col gap-4 border-b border-outline-variant pb-6 md:mb-10 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="type-headline-lg-mobile md:type-headline-lg text-on-surface">
+      <div className="mb-8 flex flex-col gap-4 border-b border-gray-200 pb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between md:mb-10 lg:gap-6">
+        <div className="min-w-0 -mt-2">
+          <h1 className="font-headline text-2xl font-extrabold leading-tight uppercase text-on-surface md:text-3xl md:tracking-tight lg:text-4xl">
             {title}
           </h1>
-          <p className="type-body-md mt-2 text-on-surface-variant">
+          <p className="font-body text-xs sm:text-sm leading-normal  text-on-surface-variant">
             Showing {products.length}{" "}
             {products.length === 1 ? "Product" : "Products"}
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 sm:gap-4">
           <button
             type="button"
             onClick={() => setMobileFiltersOpen((open) => !open)}
-            className="type-label-uppercase border border-primary px-4 py-2 text-primary md:hidden"
+            className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none border border-primary px-4 py-2 text-primary lg:hidden"
           >
             {mobileFiltersOpen ? "Hide Filters" : "Filters"}
           </button>
 
-          <label className="flex items-center gap-3">
-            <span className="type-label-uppercase text-on-surface">
+          <label className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <span className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
               Sort by:
             </span>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              className="type-body-md cursor-pointer border-b border-primary bg-transparent pb-1 text-on-surface outline-none"
+              className="font-body text-base leading-normal cursor-pointer border-b border-primary bg-transparent pb-1 text-on-surface outline-none"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -225,10 +235,10 @@ export function ShopContent({ title, defaultCategories = [] }: ShopContentProps)
         </div>
       </div>
 
-      <div className="flex gap-10 lg:gap-16">
+      <div className="flex flex-col gap-8 lg:flex-row lg:gap-6 xl:gap-8">
         <div
           className={cn(
-            "w-full shrink-0 md:block md:w-56 lg:w-64",
+            "w-full shrink-0 lg:block lg:w-56 xl:w-64",
             mobileFiltersOpen ? "block" : "hidden",
           )}
         >
@@ -246,13 +256,13 @@ export function ShopContent({ title, defaultCategories = [] }: ShopContentProps)
 
         <div className="min-w-0 flex-1">
           {products.length > 0 ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:grid-cols-3 lg:gap-x-3 lg:gap-y-6 xl:grid-cols-4 xl:gap-x-4 xl:gap-y-7">
               {products.map((product) => (
-                <ShopProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           ) : (
-            <p className="type-body-lg py-16 text-center text-on-surface-variant">
+            <p className="font-body text-lg leading-relaxed py-16 text-center text-on-surface-variant">
               No products match your filters.
             </p>
           )}

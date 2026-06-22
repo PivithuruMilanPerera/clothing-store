@@ -13,7 +13,7 @@ create table if not exists public.addresses (
   city text not null,
   state text not null,
   postal_code text not null,
-  country text not null default 'US',
+  country text not null default 'Sri Lanka',
   is_default boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

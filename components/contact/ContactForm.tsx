@@ -20,8 +20,8 @@ export function ContactForm() {
         className="border border-primary bg-surface-container-low p-8 md:p-10"
         role="status"
       >
-        <h2 className="type-headline-md text-on-surface">Message Sent</h2>
-        <p className="type-body-md mt-4 text-on-surface-variant">
+        <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Message Sent</h2>
+        <p className="font-body text-base leading-normal mt-4 text-on-surface-variant">
           {state.success}
         </p>
       </div>
@@ -51,7 +51,7 @@ export function ContactForm() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <label htmlFor="subject" className="type-label-uppercase text-on-surface">
+          <label htmlFor="subject" className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
             Subject
           </label>
           <select
@@ -79,7 +79,7 @@ export function ContactForm() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="message" className="type-label-uppercase text-on-surface">
+        <label htmlFor="message" className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
           Message
         </label>
         <textarea
@@ -97,7 +97,7 @@ export function ContactForm() {
       </div>
 
       {state?.error ? (
-        <p className="type-body-md text-error" role="alert">
+        <p className="font-body text-base leading-normal text-error" role="alert">
           {state.error}
         </p>
       ) : null}

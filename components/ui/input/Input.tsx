@@ -10,7 +10,7 @@ export function Input({ label, id, className, ...props }: InputProps) {
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <label htmlFor={inputId} className="type-label-uppercase text-on-surface">
+      <label htmlFor={inputId} className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
         {label}
       </label>
       <input

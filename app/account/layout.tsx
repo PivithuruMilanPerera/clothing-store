@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { signOut } from "@/app/account/actions";
 import { AccountNav } from "@/components/account";
 import { SiteFooter, SiteHeader } from "@/components/layout";
-import { Button, Container } from "@/components/ui";
+import { Container } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,23 +32,18 @@ export default async function AccountLayout({ children }: AccountLayoutProps) {
       <SiteHeader />
       <main className="bg-surface-container-lowest py-10 md:py-14">
         <Container>
-          <div className="border-b border-outline-variant pb-6 md:pb-8">
-            <p className="type-label-uppercase text-on-surface-variant">
+          <div className=" pb-3">
+            <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
               My Account
             </p>
-            <h1 className="type-headline-lg-mobile md:type-headline-lg mt-2 text-on-surface">
+            <h1 className="font-headline text-[2rem] font-extrabold leading-tight uppercase md:text-5xl md:tracking-tight mt-2 text-on-surface">
               Hello, {displayName.split(" ")[0]}
             </h1>
           </div>
 
-          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)] lg:gap-16">
-            <aside className="space-y-6">
+          <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)] lg:gap-16">
+            <aside className="lg:sticky lg:top-24 lg:self-start">
               <AccountNav />
-              <form action={signOut}>
-                <Button type="submit" variant="ghost" className="w-full">
-                  Sign Out
-                </Button>
-              </form>
             </aside>
 
             <div>{children}</div>

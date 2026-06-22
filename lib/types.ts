@@ -14,6 +14,7 @@ export type Product = {
   image: string;
   href: string;
   badge?: string;
+  colors?: ProductColor[];
 };
 
 export type ShopProduct = Product & {
@@ -140,7 +141,6 @@ export type ReturnRequest = {
 export type AccountNavItem = {
   label: string;
   href: string;
-  description: string;
 };
 
 export type Admin = {

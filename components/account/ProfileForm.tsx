@@ -46,13 +46,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       />
 
       {state?.error ? (
-        <p className="type-body-md text-error" role="alert">
+        <p className="font-body text-base leading-normal text-error" role="alert">
           {state.error}
         </p>
       ) : null}
 
       {state?.success ? (
-        <p className="type-body-md text-on-surface" role="status">
+        <p className="font-body text-base leading-normal text-on-surface" role="status">
           {state.success}
         </p>
       ) : null}

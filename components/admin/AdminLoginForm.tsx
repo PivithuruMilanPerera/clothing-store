@@ -37,7 +37,7 @@ export function AdminLoginForm({ redirectTo = "/admin" }: AdminLoginFormProps) {
       />
 
       {state?.error ? (
-        <p className="type-body-md text-error" role="alert">
+        <p className="font-body text-base leading-normal text-error" role="alert">
           {state.error}
         </p>
       ) : null}

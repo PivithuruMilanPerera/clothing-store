@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   deleteAddressFromForm,
   saveAddress,
@@ -53,6 +53,12 @@ export function AddressManager({ addresses }: AddressManagerProps) {
     setShowForm(false);
   }
 
+  useEffect(() => {
+    if (state?.success) {
+      closeForm();
+    }
+  }, [state?.success]);
+
   return (
     <div className="space-y-8">
       {addresses.length > 0 ? (
@@ -69,7 +75,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="type-label-uppercase text-on-surface">
+                  <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
                     {address.label}
                     {address.is_default ? (
                       <span className="ml-2 text-on-surface-variant">
@@ -77,7 +83,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
                       </span>
                     ) : null}
                   </p>
-                  <div className="type-body-md mt-3 space-y-1 text-on-surface-variant">
+                  <div className="font-body text-base leading-normal mt-3 space-y-1 text-on-surface-variant">
                     {formatAddress(address).map((line) => (
                       <p key={line}>{line}</p>
                     ))}
@@ -108,13 +114,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
             </li>
           ))}
         </ul>
-      ) : (
-        <div className="border border-outline-variant bg-surface-container-lowest p-8 text-center">
-          <p className="type-body-md text-on-surface-variant">
-            You have not saved any addresses yet.
-          </p>
-        </div>
-      )}
+      ) : null}
 
       {!showForm ? (
         <Button type="button" onClick={openNewForm}>
@@ -122,8 +122,8 @@ export function AddressManager({ addresses }: AddressManagerProps) {
         </Button>
       ) : (
         <div className="border border-outline-variant bg-surface-container-lowest p-6 md:p-8">
-          <h3 className="type-headline-md text-on-surface">
-            {editingAddress ? "Edit Address" : "New Address"}
+          <h3 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">
+            {editingAddress ? "Edit Address" : "Add Address"}
           </h3>
 
           <form action={formAction} className="mt-6 grid gap-6 md:grid-cols-2">
@@ -198,13 +198,13 @@ export function AddressManager({ addresses }: AddressManagerProps) {
               label="Country"
               type="text"
               name="country"
-              defaultValue={editingAddress?.country ?? "US"}
+              defaultValue={editingAddress?.country ?? "Sri Lanka"}
               autoComplete="country-name"
               required
               disabled={isPending}
             />
 
-            <label className="type-body-md flex items-center gap-3 text-on-surface md:col-span-2">
+            <label className="font-body text-base leading-normal flex items-center gap-3 text-on-surface md:col-span-2">
               <input
                 type="checkbox"
                 name="isDefault"
@@ -216,14 +216,8 @@ export function AddressManager({ addresses }: AddressManagerProps) {
             </label>
 
             {state?.error ? (
-              <p className="type-body-md text-error md:col-span-2" role="alert">
+              <p className="font-body text-base leading-normal text-error md:col-span-2" role="alert">
                 {state.error}
-              </p>
-            ) : null}
-
-            {state?.success ? (
-              <p className="type-body-md text-on-surface md:col-span-2" role="status">
-                {state.success}
               </p>
             ) : null}
 

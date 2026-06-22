@@ -19,17 +19,17 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        "mb-6 flex items-end justify-between gap-4 md:mb-10",
+        "mb-4 flex items-end justify-between gap-4 md:mb-6",
         className,
       )}
     >
-      <h2 className={cn("type-headline-lg text-on-surface", titleClassName)}>
+      <h2 className={cn("font-headline text-2xl font-extrabold leading-tight tracking-tight uppercase md:text-[2.25rem] text-on-surface", titleClassName)}>
         {title}
       </h2>
       {action ? (
         <Link
           href={action.href}
-          className="type-label-uppercase inline-flex items-center gap-2 text-on-surface-variant hover:text-primary"
+          className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-flex items-center gap-2 text-on-surface-variant hover:text-primary"
         >
           {action.label}
           <ArrowRightIcon className="h-4 w-4" />

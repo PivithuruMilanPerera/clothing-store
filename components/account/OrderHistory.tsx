@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui";
 import type { Order, OrderStatus } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 type OrderHistoryProps = {
   orders: Order[];
@@ -24,19 +24,12 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value);
-}
-
 export function OrderHistory({ orders }: OrderHistoryProps) {
   if (orders.length === 0) {
     return (
       <div className="border border-outline-variant bg-surface-container-lowest py-16 text-center md:py-24">
-        <h2 className="type-headline-md text-on-surface">No Orders Yet</h2>
-        <p className="type-body-md mt-4 text-on-surface-variant">
+        <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">No Orders Yet</h2>
+        <p className="font-body text-base leading-normal mt-4 text-on-surface-variant">
           When you place an order, it will appear here.
         </p>
         <Button href="/shop" className="mt-8">
@@ -55,17 +48,17 @@ export function OrderHistory({ orders }: OrderHistoryProps) {
         >
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant px-5 py-4 md:px-6">
             <div>
-              <p className="type-label-uppercase text-on-surface">
+              <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
                 Order {order.order_number}
               </p>
-              <p className="type-body-md mt-1 text-on-surface-variant">
+              <p className="font-body text-base leading-normal mt-1 text-on-surface-variant">
                 Placed on {formatDate(order.created_at)}
               </p>
             </div>
             <div className="text-right">
               <span
                 className={cn(
-                  "type-label-uppercase inline-block border px-3 py-1",
+                  "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-block border px-3 py-1",
                   order.status === "delivered"
                     ? "border-primary text-primary"
                     : "border-outline-variant text-on-surface-variant",
@@ -73,8 +66,8 @@ export function OrderHistory({ orders }: OrderHistoryProps) {
               >
                 {statusLabels[order.status]}
               </span>
-              <p className="type-body-md mt-2 font-medium tabular-nums text-on-surface">
-                {formatCurrency(Number(order.total))}
+              <p className="font-body text-base leading-normal mt-2 font-medium tabular-nums text-on-surface">
+                {formatPrice(Number(order.total))}
               </p>
             </div>
           </div>
@@ -101,23 +94,23 @@ export function OrderHistory({ orders }: OrderHistoryProps) {
                   {item.product_slug ? (
                     <Link
                       href={`/products/${item.product_slug}`}
-                      className="type-headline-md block text-sm font-bold uppercase text-on-surface hover:opacity-70"
+                      className="font-headline block text-sm font-bold uppercase text-on-surface hover:opacity-70"
                     >
                       {item.product_name}
                     </Link>
                   ) : (
-                    <p className="type-headline-md text-sm font-bold uppercase text-on-surface">
+                    <p className="font-headline text-sm font-bold uppercase text-on-surface">
                       {item.product_name}
                     </p>
                   )}
-                  <p className="type-body-md mt-2 text-on-surface-variant">
+                  <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
                     {[item.color, item.size].filter(Boolean).join(" / ")}
                     {item.quantity > 1 ? ` · Qty ${item.quantity}` : ""}
                   </p>
                 </div>
 
-                <p className="type-body-md tabular-nums text-on-surface">
-                  {formatCurrency(Number(item.unit_price) * item.quantity)}
+                <p className="font-body text-base leading-normal tabular-nums text-on-surface">
+                  {formatPrice(Number(item.unit_price) * item.quantity)}
                 </p>
               </li>
             ))}

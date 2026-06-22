@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui";
 import type { ShopProduct } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 type ShopProductCardProps = {
   product: ShopProduct;
@@ -27,11 +27,11 @@ export function ShopProductCard({ product, className }: ShopProductCardProps) {
         </div>
 
         <div className="mt-4 space-y-1">
-          <h3 className="type-headline-md text-sm font-bold text-on-surface md:text-base">
+          <h3 className="font-headline text-sm font-bold text-on-surface md:text-base">
             {product.name}
           </h3>
-          <p className="type-body-md font-medium tabular-nums text-on-surface">
-            ${product.price.toFixed(2)}
+          <p className="font-body text-base leading-normal font-medium tabular-nums text-on-surface">
+            {formatPrice(product.price)}
           </p>
         </div>
       </Link>

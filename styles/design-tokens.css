@@ -58,6 +58,8 @@
   --margin-mobile: 1rem;
   --margin-desktop: 4rem;
   --section-gap: 7.5rem;
+  --section-padding-y: 1.5rem;
+  --section-padding-y-md: 2.5rem;
 
   /* Sharp corners per DESIGN.md */
   --radius-none: 0;
@@ -106,12 +108,10 @@
   --color-on-background: var(--on-background);
   --color-ghost-border: var(--ghost-border);
 
-  --font-headline: var(--font-family-headline);
-  --font-body: var(--font-family-body);
-  --font-label: var(--font-family-label);
-
   --radius-none: var(--radius-none);
   --spacing-section: var(--section-gap);
+  --spacing-section-y: var(--section-padding-y);
+  --spacing-section-y-md: var(--section-padding-y-md);
   --spacing-gutter: var(--gutter);
   --spacing-margin-mobile: var(--margin-mobile);
   --spacing-margin-desktop: var(--margin-desktop);

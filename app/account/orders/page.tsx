@@ -12,8 +12,8 @@ export default async function OrdersPage() {
 
   return (
     <div>
-      <h2 className="type-headline-md text-on-surface">Order History</h2>
-      <p className="type-body-md mt-2 text-on-surface-variant">
+      <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Order History</h2>
+      <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
         Track purchases and review order details.
       </p>
       <div className="mt-8">

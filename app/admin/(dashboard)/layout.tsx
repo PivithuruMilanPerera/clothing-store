@@ -34,14 +34,14 @@ export default async function AdminDashboardLayout({
         <Container>
           <div className="flex flex-col gap-4 border-b border-outline-variant pb-6 md:flex-row md:items-end md:justify-between md:pb-8">
             <div>
-              <p className="type-label-uppercase text-on-surface-variant">
+              <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
                 Admin
               </p>
-              <h1 className="type-headline-lg-mobile md:type-headline-lg mt-2 text-on-surface">
+              <h1 className="font-headline text-[2rem] font-extrabold leading-tight uppercase md:text-5xl md:tracking-tight mt-2 text-on-surface">
                 Dashboard
               </h1>
               {admin?.email ? (
-                <p className="type-body-md mt-2 text-on-surface-variant">
+                <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
                   Signed in as {admin.email}
                 </p>
               ) : null}

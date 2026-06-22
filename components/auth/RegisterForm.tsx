@@ -42,22 +42,6 @@ export function RegisterForm() {
         disabled={isPending}
       />
       <Input
-        label="Delivery Address"
-        type="text"
-        name="deliveryAddress"
-        autoComplete="street-address"
-        required
-        disabled={isPending}
-      />
-      <Input
-        label="City / Location"
-        type="text"
-        name="city"
-        autoComplete="address-level2"
-        required
-        disabled={isPending}
-      />
-      <Input
         label="Password"
         type="password"
         name="password"
@@ -77,7 +61,7 @@ export function RegisterForm() {
       />
 
       {state?.error ? (
-        <p className="type-body-md text-error" role="alert">
+        <p className="font-body text-base leading-normal text-error" role="alert">
           {state.error}
         </p>
       ) : null}

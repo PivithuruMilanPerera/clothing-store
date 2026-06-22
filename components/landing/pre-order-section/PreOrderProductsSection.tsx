@@ -1,18 +1,18 @@
 import { ProductCard } from "@/components/product";
 import { Container, SectionHeader } from "@/components/ui";
-import { newArrivals } from "@/data/landing";
+import { preOrderProducts } from "@/data/landing";
 
-export function NewArrivalsSection() {
+export function PreOrderProductsSection() {
   return (
     <section className="section-py bg-surface-container-lowest">
       <Container>
         <SectionHeader
-          title="New Arrivals"
+          title="Pre Order Products"
           action={{ label: "View All", href: "/shop" }}
         />
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
-          {newArrivals.map((product, index) => (
+          {preOrderProducts.map((product, index) => (
             <ProductCard
               key={product.id}
               product={product}

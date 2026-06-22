@@ -51,13 +51,10 @@ export function ReturnRequests({
   return (
     <div className="space-y-10">
       <section className="border border-outline-variant bg-surface-container-lowest p-6 md:p-8">
-        <h2 className="type-headline-md text-on-surface">Request a Return</h2>
-        <p className="type-body-md mt-2 text-on-surface-variant">
-          Select a recent order and tell us why you would like to return it.
-        </p>
+        <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Request a Return</h2>
 
         {eligibleOrders.length === 0 ? (
-          <p className="type-body-md mt-6 text-on-surface-variant">
+          <p className="font-body text-base leading-normal mt-6 text-on-surface-variant">
             You do not have any eligible orders for a return request right now.
           </p>
         ) : (
@@ -65,7 +62,7 @@ export function ReturnRequests({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="orderId"
-                className="type-label-uppercase text-on-surface"
+                className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface"
               >
                 Order
               </label>
@@ -88,7 +85,7 @@ export function ReturnRequests({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="reason"
-                className="type-label-uppercase text-on-surface"
+                className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface"
               >
                 Reason
               </label>
@@ -111,7 +108,7 @@ export function ReturnRequests({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="details"
-                className="type-label-uppercase text-on-surface"
+                className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface"
               >
                 Additional Details
               </label>
@@ -126,13 +123,13 @@ export function ReturnRequests({
             </div>
 
             {state?.error ? (
-              <p className="type-body-md text-error" role="alert">
+              <p className="font-body text-base leading-normal text-error" role="alert">
                 {state.error}
               </p>
             ) : null}
 
             {state?.success ? (
-              <p className="type-body-md text-on-surface" role="status">
+              <p className="font-body text-base leading-normal text-on-surface" role="status">
                 {state.success}
               </p>
             ) : null}
@@ -144,14 +141,12 @@ export function ReturnRequests({
         )}
       </section>
 
-      <section>
-        <h2 className="type-headline-md text-on-surface">Your Return Requests</h2>
+      {requests.length > 0 ? (
+        <section>
+          <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">
+            Your Return Requests
+          </h2>
 
-        {requests.length === 0 ? (
-          <p className="type-body-md mt-4 text-on-surface-variant">
-            You have not submitted any return requests yet.
-          </p>
-        ) : (
           <ul className="mt-6 divide-y divide-outline-variant border border-outline-variant">
             {requests.map((request) => (
               <li
@@ -159,25 +154,25 @@ export function ReturnRequests({
                 className="grid gap-4 bg-surface-container-lowest px-5 py-5 md:grid-cols-[minmax(0,1fr)_auto] md:px-6"
               >
                 <div>
-                  <p className="type-label-uppercase text-on-surface">
+                  <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
                     {request.orders?.order_number ?? "Order"}
                   </p>
-                  <p className="type-body-md mt-2 text-on-surface">
+                  <p className="font-body text-base leading-normal mt-2 text-on-surface">
                     {request.reason}
                   </p>
                   {request.details ? (
-                    <p className="type-body-md mt-2 text-on-surface-variant">
+                    <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
                       {request.details}
                     </p>
                   ) : null}
-                  <p className="type-body-md mt-2 text-on-surface-variant">
+                  <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
                     Submitted {formatDate(request.created_at)}
                   </p>
                 </div>
 
                 <span
                   className={cn(
-                    "type-label-uppercase self-start border px-3 py-1",
+                    "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none self-start border px-3 py-1",
                     request.status === "approved" || request.status === "completed"
                       ? "border-primary text-primary"
                       : request.status === "rejected"
@@ -190,8 +185,8 @@ export function ReturnRequests({
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }
