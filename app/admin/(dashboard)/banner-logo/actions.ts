@@ -1,20 +1,14 @@
 "use server";
 
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { saveLandingContent } from "@/lib/landing-content";
+import { hasAdminCredentials } from "@/lib/supabase/admin";
+import {
+  uploadLandingImageToStorage,
+  validateLandingImageFile,
+} from "@/lib/supabase/landing-storage";
 import type { LandingContent } from "@/lib/types";
-
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "landing");
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
 
 export type BannerLogoActionState = {
   error?: string;
@@ -22,54 +16,40 @@ export type BannerLogoActionState = {
   imageUrl?: string;
 };
 
-function getExtension(file: File) {
-  const fromName = path.extname(file.name).toLowerCase();
-  if (fromName) return fromName;
-
-  switch (file.type) {
-    case "image/jpeg":
-      return ".jpg";
-    case "image/png":
-      return ".png";
-    case "image/webp":
-      return ".webp";
-    case "image/gif":
-      return ".gif";
-    default:
-      return ".png";
-  }
-}
-
 export async function uploadLandingImage(
   _prevState: BannerLogoActionState | null,
   formData: FormData,
 ): Promise<BannerLogoActionState> {
   await requireAdmin();
 
+  if (!hasAdminCredentials()) {
+    return { error: "Supabase storage is not configured." };
+  }
+
   const file = formData.get("file");
 
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof File)) {
     return { error: "Please choose an image file to upload." };
   }
 
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return { error: "Only JPG, PNG, WebP, and GIF images are allowed." };
+  const validationError = validateLandingImageFile(file);
+  if (validationError) {
+    return { error: validationError };
   }
 
-  if (file.size > MAX_FILE_SIZE) {
-    return { error: "Image must be 5 MB or smaller." };
+  try {
+    const imageUrl = await uploadLandingImageToStorage(file);
+
+    return {
+      success: "Image uploaded.",
+      imageUrl,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to upload image.";
+
+    return { error: message };
   }
-
-  const filename = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}${getExtension(file)}`;
-  const filePath = path.join(UPLOAD_DIR, filename);
-
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
-
-  return {
-    success: "Image uploaded.",
-    imageUrl: `/uploads/landing/${filename}`,
-  };
 }
 
 export async function saveBannerLogoContent(

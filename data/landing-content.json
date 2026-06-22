@@ -2,8 +2,8 @@
   "heroSlides": [
     {
       "id": "precision",
-      "image": "/uploads/landing/1782108919500-b428bced.jpg",
-      "mobileImage": "/uploads/landing/1782111733903-142cb83d.webp",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108919500-b428bced.jpg",
+      "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111733903-142cb83d.webp",
       "cta": {
         "label": "Shop Collection",
         "href": "/collection"
@@ -11,8 +11,8 @@
     },
     {
       "id": "tailored-motion",
-      "image": "/uploads/landing/1782108926360-13bd885d.jpg",
-      "mobileImage": "/uploads/landing/1782111800829-7ea162c4.webp",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108926360-13bd885d.jpg",
+      "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111800829-7ea162c4.webp",
       "headline": "Tailored Motion.",
       "cta": {
         "label": "Shop Now",
@@ -21,8 +21,8 @@
     },
     {
       "id": "summer-edit",
-      "image": "/uploads/landing/1782108932456-739499b7.webp",
-      "mobileImage": "/uploads/landing/1782111814022-2324bc67.webp",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108932456-739499b7.webp",
+      "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111814022-2324bc67.webp",
       "headline": "Refined Essentials.",
       "cta": {
         "label": "Explore",
@@ -31,8 +31,8 @@
     },
     {
       "id": "graphic-minimal",
-      "image": "/uploads/landing/1782108938069-50e8eece.webp",
-      "mobileImage": "/uploads/landing/1782111868825-7781c6c9.webp",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108938069-50e8eece.webp",
+      "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111868825-7781c6c9.webp",
       "headline": "Graphic Minimal.",
       "cta": {
         "label": "Shop Now",
@@ -41,8 +41,8 @@
     },
     {
       "id": "street-form",
-      "image": "/uploads/landing/1782108966505-221d466a.jpg",
-      "mobileImage": "/uploads/landing/1782111883060-9a593254.webp",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108966505-221d466a.jpg",
+      "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111883060-9a593254.webp",
       "headline": "Street Form.",
       "cta": {
         "label": "Discover",
@@ -51,8 +51,8 @@
     },
     {
       "id": "footwear-edit",
-      "image": "/uploads/landing/1782108971485-e1aaa481.jpg",
-      "mobileImage": "/uploads/landing/1782111900559-5da38035.webp",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108971485-e1aaa481.jpg",
+      "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111900559-5da38035.webp",
       "headline": "Footwear Edit.",
       "cta": {
         "label": "Shop Now",
@@ -64,17 +64,17 @@
     {
       "id": "brand-1",
       "name": "Engage",
-      "image": "/uploads/landing/1782108642819-1c3586b7.webp"
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108642819-1c3586b7.webp"
     },
     {
       "id": "brand-2",
       "name": "Brand 2",
-      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782125387901-eabc7447.webp"
     },
     {
       "id": "brand-3",
       "name": "Brand 3",
-      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782125562920-7db57b60.png"
     },
     {
       "id": "brand-4",
