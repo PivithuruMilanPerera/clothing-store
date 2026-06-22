@@ -177,38 +177,46 @@ export const footerColumns: FooterColumn[] = [
 export const heroSlides = [
   {
     id: "precision",
+    keyTag: "New Collection",
     headline: "Uncompromising Precision.",
     image: heroimage1.src,
+    mobileImage: heroimage1.src,
     cta: { label: "Shop Collection", href: "/collection" },
   },
   {
     id: "tailored-motion",
+    keyTag: "New",
     headline: "Tailored Motion.",
     image: heroimage2.src,
+    mobileImage: heroimage2.src,
     cta: { label: "Shop Now", href: "/collection/tailored-motion" },
   },
   {
     id: "summer-edit",
     headline: "Refined Essentials.",
     image: heroimage3.src,
+    mobileImage: heroimage3.src,
     cta: { label: "Explore", href: "/new-arrivals" },
   },
   {
     id: "graphic-minimal",
     headline: "Graphic Minimal.",
     image: heroimage1.src,
+    mobileImage: heroimage1.src,
     cta: { label: "Shop Now", href: "/collection/graphic-minimal" },
   },
   {
     id: "street-form",
     headline: "Street Form.",
     image: heroimage2.src,
+    mobileImage: heroimage2.src,
     cta: { label: "Discover", href: "/streetwear" },
   },
   {
     id: "footwear-edit",
     headline: "Footwear Edit.",
     image: heroimage3.src,
+    mobileImage: heroimage3.src,
     cta: { label: "Shop Now", href: "/collection/footwear-edit" },
   },
 ];

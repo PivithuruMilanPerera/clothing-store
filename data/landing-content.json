@@ -2,8 +2,8 @@
   "heroSlides": [
     {
       "id": "precision",
-      "headline": "Uncompromising Precision.",
       "image": "/uploads/landing/1782108919500-b428bced.jpg",
+      "mobileImage": "/uploads/landing/1782111733903-142cb83d.webp",
       "cta": {
         "label": "Shop Collection",
         "href": "/collection"
@@ -11,8 +11,9 @@
     },
     {
       "id": "tailored-motion",
-      "headline": "Tailored Motion.",
       "image": "/uploads/landing/1782108926360-13bd885d.jpg",
+      "mobileImage": "/uploads/landing/1782111800829-7ea162c4.webp",
+      "headline": "Tailored Motion.",
       "cta": {
         "label": "Shop Now",
         "href": "/collection/tailored-motion"
@@ -20,8 +21,9 @@
     },
     {
       "id": "summer-edit",
-      "headline": "Refined Essentials.",
       "image": "/uploads/landing/1782108932456-739499b7.webp",
+      "mobileImage": "/uploads/landing/1782111814022-2324bc67.webp",
+      "headline": "Refined Essentials.",
       "cta": {
         "label": "Explore",
         "href": "/new-arrivals"
@@ -29,8 +31,9 @@
     },
     {
       "id": "graphic-minimal",
-      "headline": "Graphic Minimal.",
       "image": "/uploads/landing/1782108938069-50e8eece.webp",
+      "mobileImage": "/uploads/landing/1782111868825-7781c6c9.webp",
+      "headline": "Graphic Minimal.",
       "cta": {
         "label": "Shop Now",
         "href": "/collection/graphic-minimal"
@@ -38,8 +41,9 @@
     },
     {
       "id": "street-form",
-      "headline": "Street Form.",
       "image": "/uploads/landing/1782108966505-221d466a.jpg",
+      "mobileImage": "/uploads/landing/1782111883060-9a593254.webp",
+      "headline": "Street Form.",
       "cta": {
         "label": "Discover",
         "href": "/streetwear"
@@ -47,8 +51,9 @@
     },
     {
       "id": "footwear-edit",
-      "headline": "Footwear Edit.",
       "image": "/uploads/landing/1782108971485-e1aaa481.jpg",
+      "mobileImage": "/uploads/landing/1782111900559-5da38035.webp",
+      "headline": "Footwear Edit.",
       "cta": {
         "label": "Shop Now",
         "href": "/collection/footwear-edit"

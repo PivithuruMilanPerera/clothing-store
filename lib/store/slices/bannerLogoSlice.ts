@@ -7,6 +7,8 @@ type BannerLogoState = {
   heroSlides: HeroSlide[];
   brandLogos: BrandLogo[];
   activeTab: BannerLogoTab;
+  editingHeroSlideId: string | null;
+  editingBrandLogoId: string | null;
   isSaving: boolean;
   saveMessage: string | null;
   saveError: string | null;
@@ -16,6 +18,8 @@ const initialState: BannerLogoState = {
   heroSlides: [],
   brandLogos: [],
   activeTab: "banners",
+  editingHeroSlideId: null,
+  editingBrandLogoId: null,
   isSaving: false,
   saveMessage: null,
   saveError: null,
@@ -37,6 +41,16 @@ const bannerLogoSlice = createSlice({
     },
     setActiveTab(state, action: PayloadAction<BannerLogoTab>) {
       state.activeTab = action.payload;
+      state.editingHeroSlideId = null;
+      state.editingBrandLogoId = null;
+    },
+    setEditingHeroSlide(state, action: PayloadAction<string | null>) {
+      state.editingHeroSlideId = action.payload;
+      state.editingBrandLogoId = null;
+    },
+    setEditingBrandLogo(state, action: PayloadAction<string | null>) {
+      state.editingBrandLogoId = action.payload;
+      state.editingHeroSlideId = null;
     },
     updateHeroSlide(
       state,
@@ -57,17 +71,21 @@ const bannerLogoSlice = createSlice({
       }
     },
     addHeroSlide(state) {
+      const id = createId("hero");
       state.heroSlides.push({
-        id: createId("hero"),
-        headline: "New Collection",
+        id,
         image: "",
-        cta: { label: "Shop Now", href: "/shop" },
+        mobileImage: "",
       });
+      state.editingHeroSlideId = id;
     },
     removeHeroSlide(state, action: PayloadAction<string>) {
       state.heroSlides = state.heroSlides.filter(
         (slide) => slide.id !== action.payload,
       );
+      if (state.editingHeroSlideId === action.payload) {
+        state.editingHeroSlideId = null;
+      }
     },
     updateBrandLogo(
       state,
@@ -79,16 +97,21 @@ const bannerLogoSlice = createSlice({
       Object.assign(logo, action.payload.changes);
     },
     addBrandLogo(state) {
+      const id = createId("brand");
       state.brandLogos.push({
-        id: createId("brand"),
-        name: "New Brand",
+        id,
+        name: "",
         image: "",
       });
+      state.editingBrandLogoId = id;
     },
     removeBrandLogo(state, action: PayloadAction<string>) {
       state.brandLogos = state.brandLogos.filter(
         (logo) => logo.id !== action.payload,
       );
+      if (state.editingBrandLogoId === action.payload) {
+        state.editingBrandLogoId = null;
+      }
     },
     setSaving(state, action: PayloadAction<boolean>) {
       state.isSaving = action.payload;
@@ -110,6 +133,8 @@ const bannerLogoSlice = createSlice({
 export const {
   initializeContent,
   setActiveTab,
+  setEditingHeroSlide,
+  setEditingBrandLogo,
   updateHeroSlide,
   addHeroSlide,
   removeHeroSlide,

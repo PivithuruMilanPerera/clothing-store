@@ -77,15 +77,28 @@ export async function saveBannerLogoContent(
 ): Promise<BannerLogoActionState> {
   await requireAdmin();
 
-  const heroSlides = content.heroSlides.map((slide) => ({
-    id: slide.id.trim(),
-    headline: slide.headline.trim(),
-    image: slide.image.trim(),
-    cta: {
-      label: slide.cta.label.trim(),
-      href: slide.cta.href.trim(),
-    },
-  }));
+  const heroSlides = content.heroSlides.map((slide) => {
+    const keyTag = slide.keyTag?.trim();
+    const headline = slide.headline?.trim();
+    const ctaLabel = slide.cta?.label?.trim();
+    const ctaHref = slide.cta?.href?.trim();
+
+    return {
+      id: slide.id.trim(),
+      image: slide.image.trim(),
+      mobileImage: slide.mobileImage.trim(),
+      ...(keyTag ? { keyTag } : {}),
+      ...(headline ? { headline } : {}),
+      ...(ctaLabel || ctaHref
+        ? {
+            cta: {
+              ...(ctaLabel ? { label: ctaLabel } : {}),
+              ...(ctaHref ? { href: ctaHref } : {}),
+            },
+          }
+        : {}),
+    };
+  });
 
   const brandLogos = content.brandLogos.map((logo) => ({
     id: logo.id.trim(),
@@ -93,8 +106,10 @@ export async function saveBannerLogoContent(
     image: logo.image.trim(),
   }));
 
-  if (heroSlides.some((slide) => !slide.headline || !slide.image || !slide.cta.label || !slide.cta.href)) {
-    return { error: "Each hero banner needs a headline, image, CTA label, and link." };
+  if (heroSlides.some((slide) => !slide.image || !slide.mobileImage)) {
+    return {
+      error: "Each hero banner must have desktop and mobile images.",
+    };
   }
 
   if (brandLogos.some((logo) => !logo.name || !logo.image)) {

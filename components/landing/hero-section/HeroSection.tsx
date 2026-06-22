@@ -75,16 +75,31 @@ export function HeroSection({ slides }: HeroSectionProps) {
                 : false
             }
           >
-            {slides.map((slide, index) => (              <SwiperSlide key={slide.id} className="!h-full">
+            {slides.map((slide, index) => (
+              <SwiperSlide key={slide.id} className="!h-full">
                 <article className="hero-slide-card relative h-full overflow-hidden rounded-2xl">
                   <Image
-                    src={slide.image}
-                    alt={slide.headline}
+                    src={slide.mobileImage}
+                    alt={slide.headline ?? "Hero banner"}
                     fill
                     loading={index === 0 ? "eager" : "lazy"}
-                    sizes="(max-width: 768px) 85vw, 56vw"
+                    sizes="(max-width: 768px) 85vw, 0px"
                     className={cn(
-                      "hero-slide-image object-cover object-center will-change-transform",
+                      "hero-slide-image object-cover object-center will-change-transform md:hidden",
+                      index % 2 === 0
+                        ? "hero-slide-image--in"
+                        : "hero-slide-image--out",
+                    )}
+                    priority={index === 0}
+                  />
+                  <Image
+                    src={slide.image}
+                    alt={slide.headline ?? "Hero banner"}
+                    fill
+                    loading={index === 0 ? "eager" : "lazy"}
+                    sizes="(min-width: 768px) 56vw, 0px"
+                    className={cn(
+                      "hero-slide-image hidden object-cover object-center will-change-transform md:block",
                       index % 2 === 0
                         ? "hero-slide-image--in"
                         : "hero-slide-image--out",
@@ -94,17 +109,23 @@ export function HeroSection({ slides }: HeroSectionProps) {
                   <div className="hero-slide-overlay absolute inset-0 bg-primary/25" />
 
                   <div className="hero-slide-content relative flex h-full flex-col items-start justify-end p-5 md:p-8">
-                    <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none mb-2 text-on-primary/80 md:mb-3">
-                      New Collection
-                    </p>
-                    <h1 className="font-headline text-[clamp(2rem,6vw,5rem)] font-black leading-none tracking-tighter uppercase max-w-[11rem] text-balance text-on-primary sm:max-w-[13rem] md:max-w-[16rem]">
-                      {slide.headline}
-                    </h1>
-                    <div className="mt-4 md:mt-5">
-                      <Button variant="inverted" href={slide.cta.href}>
-                        {slide.cta.label}
-                      </Button>
-                    </div>
+                    {slide.keyTag ? (
+                      <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none mb-2 text-on-primary/80 md:mb-3">
+                        {slide.keyTag}
+                      </p>
+                    ) : null}
+                    {slide.headline ? (
+                      <h1 className="font-headline text-[clamp(2rem,6vw,5rem)] font-black leading-none tracking-tighter uppercase max-w-[11rem] text-balance text-on-primary sm:max-w-[13rem] md:max-w-[16rem]">
+                        {slide.headline}
+                      </h1>
+                    ) : null}
+                    {slide.cta?.label && slide.cta?.href ? (
+                      <div className="mt-4 md:mt-5">
+                        <Button variant="inverted" href={slide.cta.href}>
+                          {slide.cta.label}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               </SwiperSlide>

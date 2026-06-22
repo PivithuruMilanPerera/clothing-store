@@ -150,15 +150,17 @@ export type Admin = {
 };
 
 export type HeroSlideCta = {
-  label: string;
-  href: string;
+  label?: string;
+  href?: string;
 };
 
 export type HeroSlide = {
   id: string;
-  headline: string;
   image: string;
-  cta: HeroSlideCta;
+  mobileImage: string;
+  keyTag?: string;
+  headline?: string;
+  cta?: HeroSlideCta;
 };
 
 export type BrandLogo = {
