@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { loginUser, type LoginState } from "@/app/login/actions";
 import { Button, Input } from "@/components/ui";
@@ -35,6 +36,15 @@ export function LoginForm({ redirectTo = "/account" }: LoginFormProps) {
         required
         disabled={isPending}
       />
+
+      <div className="flex justify-end">
+        <Link
+          href="/login/forgot-password"
+          className="font-body text-sm leading-normal text-on-surface-variant underline-offset-4 hover:text-primary hover:underline"
+        >
+          Forgot password?
+        </Link>
+      </div>
 
       {state?.error ? (
         <p className="font-body text-base leading-normal text-error" role="alert">

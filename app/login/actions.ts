@@ -1,11 +1,30 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { sanitizeRedirectPath } from "@/lib/auth";
+import { isAdminUser, sanitizeRedirectPath } from "@/lib/auth";
 
 export type LoginState = {
   error?: string;
 };
+
+export type ForgotPasswordState = {
+  error?: string;
+  success?: string;
+};
+
+async function getRequestOrigin(): Promise<string> {
+  const headersList = await headers();
+  const host =
+    headersList.get("x-forwarded-host") ?? headersList.get("host");
+  const protocol = headersList.get("x-forwarded-proto") ?? "http";
+
+  if (host) {
+    return `${protocol}://${host}`;
+  }
+
+  return "http://localhost:3000";
+}
 
 function mapAuthError(message: string): string {
   const normalized = message.toLowerCase();
@@ -54,5 +73,47 @@ export async function loginUser(
     return { error: mapAuthError(error.message) };
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user && (await isAdminUser(supabase, user.id))) {
+    redirect("/admin");
+  }
+
   redirect(redirectTo);
+}
+
+export async function requestPasswordResetByEmail(
+  _prevState: ForgotPasswordState | null,
+  formData: FormData,
+): Promise<ForgotPasswordState> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { error: "Email is required." };
+  }
+
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+  const origin = await getRequestOrigin();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=/account/reset-password`,
+  });
+
+  if (error) {
+    const normalized = error.message.toLowerCase();
+
+    if (normalized.includes("rate limit")) {
+      return {
+        error: "Too many requests. Please wait a few minutes and try again.",
+      };
+    }
+  }
+
+  return {
+    success:
+      "If an account exists for that email, you will receive a reset link shortly.",
+  };
 }

@@ -1,8 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { isAdminUser, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Address, Order, Profile, ReturnRequest } from "@/lib/types";
 
@@ -15,6 +16,10 @@ async function getSupabaseForUser() {
   const user = await requireUser();
   const supabase = await createClient();
 
+  if (await isAdminUser(supabase, user.id)) {
+    redirect("/admin");
+  }
+
   return { user, supabase };
 }
 
@@ -22,6 +27,74 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");
+}
+
+async function getRequestOrigin(): Promise<string> {
+  const headersList = await headers();
+  const host =
+    headersList.get("x-forwarded-host") ?? headersList.get("host");
+  const protocol = headersList.get("x-forwarded-proto") ?? "http";
+
+  if (host) {
+    return `${protocol}://${host}`;
+  }
+
+  return "http://localhost:3000";
+}
+
+export async function updatePassword(
+  _prevState: ActionState | null,
+  formData: FormData,
+): Promise<ActionState> {
+  const { supabase } = await getSupabaseForUser();
+
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!password || !confirmPassword) {
+    return { error: "Both password fields are required." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { error: "Unable to update password. Please try again." };
+  }
+
+  revalidatePath("/account/settings");
+  revalidatePath("/account/reset-password");
+  return { success: "Password updated successfully." };
+}
+
+export async function requestPasswordReset(
+  _prevState: ActionState | null,
+): Promise<ActionState> {
+  const { user, supabase } = await getSupabaseForUser();
+  const email = user.email;
+
+  if (!email) {
+    return { error: "No email associated with this account." };
+  }
+
+  const origin = await getRequestOrigin();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=/account/reset-password`,
+  });
+
+  if (error) {
+    return { error: "Unable to send reset email. Please try again." };
+  }
+
+  return { success: "Check your email for a password reset link." };
 }
 
 export async function getProfile(): Promise<Profile | null> {

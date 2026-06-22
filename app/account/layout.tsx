@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { AccountNav } from "@/components/account";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { Container } from "@/components/ui";
-import { requireUser } from "@/lib/auth";
+import { isAdminUser, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -18,6 +19,10 @@ type AccountLayoutProps = {
 export default async function AccountLayout({ children }: AccountLayoutProps) {
   const user = await requireUser();
   const supabase = await createClient();
+
+  if (await isAdminUser(supabase, user.id)) {
+    redirect("/admin");
+  }
 
   const { data: profile } = await supabase
     .from("profiles")

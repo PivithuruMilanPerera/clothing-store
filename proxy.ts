@@ -39,7 +39,10 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isAccountRoute = pathname.startsWith("/account");
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/login/forgot-password";
   const isAdminRoute = pathname.startsWith("/admin");
   const isAdminLoginRoute = pathname === "/admin/login";
 
@@ -77,16 +80,28 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (isAccountRoute && !user) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("redirect", sanitizeRedirectPath(pathname));
-    return NextResponse.redirect(loginUrl);
+  if (isAccountRoute) {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("redirect", sanitizeRedirectPath(pathname));
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const isAdmin = await isAdminUser(supabase, user.id);
+
+    if (isAdmin) {
+      const adminUrl = request.nextUrl.clone();
+      adminUrl.pathname = "/admin";
+      adminUrl.search = "";
+      return NextResponse.redirect(adminUrl);
+    }
   }
 
   if (isAuthRoute && user) {
+    const isAdmin = await isAdminUser(supabase, user.id);
     const accountUrl = request.nextUrl.clone();
-    accountUrl.pathname = "/account";
+    accountUrl.pathname = isAdmin ? "/admin" : "/account";
     accountUrl.search = "";
     return NextResponse.redirect(accountUrl);
   }

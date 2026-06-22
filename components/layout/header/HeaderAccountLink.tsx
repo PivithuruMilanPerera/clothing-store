@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionAdmin, getSessionUser } from "@/lib/auth";
 import { UserIcon } from "@/components/icons";
 
 type HeaderAccountLinkProps = {
@@ -7,9 +7,9 @@ type HeaderAccountLinkProps = {
 };
 
 export async function HeaderAccountLink(_props: HeaderAccountLinkProps) {
-  const user = await getSessionUser();
-  const href = user ? "/account" : "/login";
-  const label = user ? "My Account" : "Sign In";
+  const [user, admin] = await Promise.all([getSessionUser(), getSessionAdmin()]);
+  const href = admin ? "/admin" : user ? "/account" : "/login";
+  const label = admin ? "Admin Dashboard" : user ? "My Account" : "Sign In";
 
   return (
     <Link href={href} aria-label={label} className="hover:opacity-70">
