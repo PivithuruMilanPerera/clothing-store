@@ -62,44 +62,34 @@
   ],
   "brandLogos": [
     {
-      "id": "brand-1",
-      "name": "Engage",
-      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108642819-1c3586b7.webp"
-    },
-    {
       "id": "brand-2",
       "name": "Brand 2",
-      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782125387901-eabc7447.webp"
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782135833026-f3950b2c.jpg"
     },
     {
       "id": "brand-3",
       "name": "Brand 3",
-      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782125562920-7db57b60.png"
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782135573483-c8594894.webp"
     },
     {
       "id": "brand-4",
       "name": "Brand 4",
-      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782135588201-a53727f8.webp"
     },
     {
       "id": "brand-5",
       "name": "Brand 5",
-      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782135606155-4a651900.webp"
     },
     {
-      "id": "brand-6",
-      "name": "Brand 6",
-      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+      "id": "brand-9a541dfb",
+      "name": "Brand 4",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782135702863-407e61fa.png"
     },
     {
-      "id": "brand-7",
-      "name": "Brand 7",
-      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
-    },
-    {
-      "id": "brand-8",
-      "name": "Brand 8",
-      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnxZnbZvsXk53T1xlTyr0akcZc7UqplTdw3LQVYKMRzO4SsF9_uRmwgpY&s=10"
+      "id": "brand-7b03cd64",
+      "name": "Brand 5",
+      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782135752332-f34a5c82.jpg"
     }
   ]
 }
