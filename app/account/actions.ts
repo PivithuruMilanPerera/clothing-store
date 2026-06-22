@@ -103,7 +103,7 @@ export async function saveAddress(
   const city = String(formData.get("city") ?? "").trim();
   const state = String(formData.get("state") ?? "").trim();
   const postalCode = String(formData.get("postalCode") ?? "").trim();
-  const country = String(formData.get("country") ?? "US").trim();
+  const country = String(formData.get("country") ?? "Sri Lanka").trim();
   const isDefault = formData.get("isDefault") === "on";
 
   if (!fullName || !line1 || !city || !state || !postalCode) {

@@ -50,8 +50,6 @@ export async function registerUser(
       user_metadata: {
         full_name: fields.fullName,
         phone: fields.phone,
-        delivery_address: fields.deliveryAddress,
-        city: fields.city,
       },
     });
 
@@ -73,6 +71,18 @@ export async function registerUser(
     if (setupError) {
       console.error("Registration setup failed:", setupError);
     }
+
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: fields.email,
+      password: fields.password,
+    });
+
+    if (signInError) {
+      return { error: mapAuthError(signInError.message) };
+    }
   } else {
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
@@ -84,8 +94,6 @@ export async function registerUser(
         data: {
           full_name: fields.fullName,
           phone: fields.phone,
-          delivery_address: fields.deliveryAddress,
-          city: fields.city,
         },
       },
     });
@@ -109,10 +117,17 @@ export async function registerUser(
       console.error("Registration setup failed:", setupError);
     }
 
-    if (data.session) {
-      await supabase.auth.signOut();
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: fields.email,
+        password: fields.password,
+      });
+
+      if (signInError) {
+        return { error: mapAuthError(signInError.message) };
+      }
     }
   }
 
-  redirect("/login?registered=1");
+  redirect("/account");
 }

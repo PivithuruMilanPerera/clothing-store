@@ -42,22 +42,6 @@ export function RegisterForm() {
         disabled={isPending}
       />
       <Input
-        label="Delivery Address"
-        type="text"
-        name="deliveryAddress"
-        autoComplete="street-address"
-        required
-        disabled={isPending}
-      />
-      <Input
-        label="City / Location"
-        type="text"
-        name="city"
-        autoComplete="address-level2"
-        required
-        disabled={isPending}
-      />
-      <Input
         label="Password"
         type="password"
         name="password"

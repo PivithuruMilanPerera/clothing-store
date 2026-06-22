@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   deleteAddressFromForm,
   saveAddress,
@@ -52,6 +52,12 @@ export function AddressManager({ addresses }: AddressManagerProps) {
     setEditingId(null);
     setShowForm(false);
   }
+
+  useEffect(() => {
+    if (state?.success) {
+      closeForm();
+    }
+  }, [state?.success]);
 
   return (
     <div className="space-y-8">
@@ -108,13 +114,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
             </li>
           ))}
         </ul>
-      ) : (
-        <div className="border border-outline-variant bg-surface-container-lowest p-8 text-center">
-          <p className="font-body text-base leading-normal text-on-surface-variant">
-            You have not saved any addresses yet.
-          </p>
-        </div>
-      )}
+      ) : null}
 
       {!showForm ? (
         <Button type="button" onClick={openNewForm}>
@@ -123,7 +123,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
       ) : (
         <div className="border border-outline-variant bg-surface-container-lowest p-6 md:p-8">
           <h3 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">
-            {editingAddress ? "Edit Address" : "New Address"}
+            {editingAddress ? "Edit Address" : "Add Address"}
           </h3>
 
           <form action={formAction} className="mt-6 grid gap-6 md:grid-cols-2">
@@ -198,7 +198,7 @@ export function AddressManager({ addresses }: AddressManagerProps) {
               label="Country"
               type="text"
               name="country"
-              defaultValue={editingAddress?.country ?? "US"}
+              defaultValue={editingAddress?.country ?? "Sri Lanka"}
               autoComplete="country-name"
               required
               disabled={isPending}
@@ -218,12 +218,6 @@ export function AddressManager({ addresses }: AddressManagerProps) {
             {state?.error ? (
               <p className="font-body text-base leading-normal text-error md:col-span-2" role="alert">
                 {state.error}
-              </p>
-            ) : null}
-
-            {state?.success ? (
-              <p className="font-body text-base leading-normal text-on-surface md:col-span-2" role="status">
-                {state.success}
               </p>
             ) : null}
 

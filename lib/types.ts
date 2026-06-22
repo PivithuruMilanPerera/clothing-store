@@ -141,7 +141,6 @@ export type ReturnRequest = {
 export type AccountNavItem = {
   label: string;
   href: string;
-  description: string;
 };
 
 export type Admin = {

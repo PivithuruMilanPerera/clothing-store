@@ -19,7 +19,7 @@ export function IconButton({
       type="button"
       aria-label={label}
       className={cn(
-        "inline-flex h-10 w-10 items-center justify-center border transition-none",
+        "inline-flex h-10 w-10 cursor-pointer items-center justify-center border transition-none",
         variant === "light"
           ? "border-on-primary bg-on-primary text-primary hover:bg-primary hover:text-on-primary"
           : "border-primary bg-primary text-on-primary hover:bg-on-primary hover:text-primary",

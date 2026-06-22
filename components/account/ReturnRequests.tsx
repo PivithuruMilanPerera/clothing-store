@@ -52,9 +52,6 @@ export function ReturnRequests({
     <div className="space-y-10">
       <section className="border border-outline-variant bg-surface-container-lowest p-6 md:p-8">
         <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Request a Return</h2>
-        <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
-          Select a recent order and tell us why you would like to return it.
-        </p>
 
         {eligibleOrders.length === 0 ? (
           <p className="font-body text-base leading-normal mt-6 text-on-surface-variant">
@@ -144,14 +141,12 @@ export function ReturnRequests({
         )}
       </section>
 
-      <section>
-        <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Your Return Requests</h2>
+      {requests.length > 0 ? (
+        <section>
+          <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">
+            Your Return Requests
+          </h2>
 
-        {requests.length === 0 ? (
-          <p className="font-body text-base leading-normal mt-4 text-on-surface-variant">
-            You have not submitted any return requests yet.
-          </p>
-        ) : (
           <ul className="mt-6 divide-y divide-outline-variant border border-outline-variant">
             {requests.map((request) => (
               <li
@@ -190,8 +185,8 @@ export function ReturnRequests({
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }
