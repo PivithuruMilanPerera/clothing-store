@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { signOut } from "@/app/account/actions";
+import { ResetPasswordForm } from "@/components/account";
 import { Button } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -28,10 +29,19 @@ export default async function AccountSettingsPage() {
         Account
       </h2>
       <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
-        Manage your account session and sign out when you are done.
+        Manage your password, session, and sign out when you are done.
       </p>
 
       <div className="mt-8 max-w-xl border border-outline-variant bg-surface-container-lowest p-6">
+        <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
+          Password
+        </p>
+        <div className="mt-4">
+          <ResetPasswordForm />
+        </div>
+      </div>
+
+      <div className="mt-6 max-w-xl border border-outline-variant bg-surface-container-lowest p-6">
         <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
           Signed in as
         </p>

@@ -100,7 +100,9 @@ export function Popup({
         </div>
 
         {children ? (
-          <div className="flex-1 overflow-y-auto px-5 py-5 md:px-6">{children}</div>
+          <div className="flex-1 overflow-y-auto px-5 py-5 md:px-6">
+            {children}
+          </div>
         ) : null}
 
         {footer ? (
