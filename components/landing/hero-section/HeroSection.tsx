@@ -19,7 +19,6 @@ type HeroSectionProps = {
 
 export function HeroSection({ slides }: HeroSectionProps) {
   const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
-  const heroHeightClass = "h-[68svh] md:h-[78svh]";
   const hasMultipleSlides = slides.length > 1;
   return (
     <section
@@ -31,7 +30,7 @@ export function HeroSection({ slides }: HeroSectionProps) {
       }
     >
       <div className="w-full">
-        <div className={heroHeightClass}>
+        <div className="relative w-full aspect-9/14 md:aspect-21/8">
           <Swiper
             modules={[A11y, Autoplay, Pagination]}
             loop={hasMultipleSlides}

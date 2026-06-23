@@ -56,7 +56,7 @@ function ImageUploadField({
       <div
         className={cn(
           "relative w-full overflow-hidden rounded-lg border border-outline-variant bg-surface-container-low",
-          variant === "mobile" ? "mx-auto aspect-[9/16] max-w-[180px]" : "h-36",
+          variant === "mobile" ? "mx-auto aspect-9/14 max-w-[180px]" : "aspect-21/8",
         )}
       >
         {imageUrl ? (

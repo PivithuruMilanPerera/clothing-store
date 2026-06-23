@@ -35,10 +35,10 @@ export function SiteHeader({ variant = "solid", className }: SiteHeaderProps) {
             <Image
               src={logo}
               alt="Velvorz"
-              height={36}
+              height={40}
               loading="eager"
               className={cn(
-                "h-9 w-auto object-contain md:h-11",
+                "h-10 w-auto object-contain md:h-12",
                 isTransparent && "brightness-0 invert",
               )}
             />
