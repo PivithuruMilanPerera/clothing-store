@@ -7,7 +7,8 @@ export function PreOrderProductsSection() {
     <section className="section-py bg-surface-container-lowest">
       <Container>
         <SectionHeader
-          title="Pre Order Products"
+          title="Coming Soon"
+          subtitle="Enjoy up to 25% off"
           action={{ label: "View All", href: "/shop" }}
         />
 

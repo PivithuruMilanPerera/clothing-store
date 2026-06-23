@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 type SectionHeaderProps = {
   title: string;
+  subtitle?: string;
   action?: { label: string; href: string };
   className?: string;
   titleClassName?: string;
@@ -12,6 +13,7 @@ type SectionHeaderProps = {
 
 export function SectionHeader({
   title,
+  subtitle,
   action,
   className,
   titleClassName,
@@ -23,9 +25,21 @@ export function SectionHeader({
         className,
       )}
     >
-      <h2 className={cn("font-headline text-2xl font-extrabold leading-tight tracking-tight uppercase md:text-[2.25rem] text-on-surface", titleClassName)}>
-        {title}
-      </h2>
+      <div>
+        <h2
+          className={cn(
+            "font-headline text-2xl font-extrabold leading-tight tracking-tight uppercase md:text-[2.25rem] text-on-surface",
+            titleClassName,
+          )}
+        >
+          {title}
+        </h2>
+        {subtitle ? (
+          <p className="font-body mt-1 text-sm leading-normal text-on-surface-variant">
+            {subtitle}
+          </p>
+        ) : null}
+      </div>
       {action ? (
         <Link
           href={action.href}
