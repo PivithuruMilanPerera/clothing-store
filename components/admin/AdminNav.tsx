@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 
 const adminNavItems = [
   { label: "Dashboard", href: "/admin", icon: HomeIcon },
+  { label: "Categories", href: "/admin/categories", icon: ImageIcon },
+  { label: "Products", href: "/admin/products", icon: ImageIcon },
   { label: "Banner & Logo", href: "/admin/banner-logo", icon: ImageIcon },
 ];
 

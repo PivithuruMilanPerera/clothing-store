@@ -7,6 +7,24 @@ export type ShopFilters = {
   maxPrice: number;
 };
 
+function productMatchesColorFilter(
+  product: ShopProduct,
+  filterColors: string[],
+): boolean {
+  return filterColors.some((filterColor) => {
+    if (product.colors.includes(filterColor)) {
+      return true;
+    }
+
+    const normalizedFilter = filterColor.trim().toLowerCase();
+    return (product.colorOptions ?? []).some(
+      (option) =>
+        option.id === filterColor ||
+        option.name.trim().toLowerCase() === normalizedFilter,
+    );
+  });
+}
+
 export function filterProducts(
   products: ShopProduct[],
   filters: ShopFilters,
@@ -14,7 +32,7 @@ export function filterProducts(
   return products.filter((product) => {
     if (
       filters.categories.length > 0 &&
-      !filters.categories.includes(product.category)
+      !filters.categories.some((slug) => product.categorySlugs.includes(slug))
     ) {
       return false;
     }
@@ -28,7 +46,7 @@ export function filterProducts(
 
     if (
       filters.colors.length > 0 &&
-      !product.colors.some((color) => filters.colors.includes(color))
+      !productMatchesColorFilter(product, filters.colors)
     ) {
       return false;
     }

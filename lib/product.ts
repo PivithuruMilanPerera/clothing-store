@@ -1,6 +1,5 @@
 import { newArrivals } from "@/data/landing";
 import { productDetailOverrides } from "@/data/products";
-import { shopProducts } from "@/data/shop";
 import type { ProductDetail, ProductImage, ShopProduct } from "@/lib/types";
 
 const DEFAULT_DESCRIPTION =
@@ -69,11 +68,6 @@ const landingCatalog: ShopProduct[] = [
 ];
 
 const catalog = new Map<string, ProductDetail>();
-
-for (const product of shopProducts) {
-  const detail = toProductDetail(product);
-  catalog.set(detail.slug, detail);
-}
 
 for (const product of landingCatalog) {
   const slug = slugFromHref(product.href);

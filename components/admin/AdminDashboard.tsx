@@ -1,4 +1,4 @@
-export default function AdminPage() {
+export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
@@ -19,8 +19,8 @@ export default function AdminPage() {
             Coming Soon
           </h2>
           <p className="font-body mt-4 text-sm leading-relaxed text-on-primary/80 md:text-base">
-            New admin tools and insights are on the way. For now, manage homepage
-            hero banners and brand logos from the Banner &amp; Logo section.
+            Manage categories with images, create products with sizes and colors,
+            and update homepage banners and brand logos.
           </p>
         </div>
 

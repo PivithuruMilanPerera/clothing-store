@@ -1,8 +1,22 @@
 import { CategoryCard } from "@/components/category";
 import { Container, SectionHeader } from "@/components/ui";
-import { categories } from "@/data/landing";
+import { getMainCategoriesForDisplay } from "@/lib/categories";
+import type { Category } from "@/lib/types";
 
-export function ShopByCategorySection() {
+type ShopByCategorySectionProps = {
+  categories?: Category[];
+};
+
+export async function ShopByCategorySection({
+  categories: categoriesProp,
+}: ShopByCategorySectionProps) {
+  const dbCategories = categoriesProp ?? (await getMainCategoriesForDisplay());
+  const categories = dbCategories;
+
+  if (categories.length === 0) {
+    return null;
+  }
+
   return (
     <section className="section-py bg-surface-container-lowest">
       <Container>
