@@ -11,6 +11,7 @@ import {
   getPublishedShopProducts,
   getShopFilterData,
 } from "@/lib/products";
+import { resolveShopBrand } from "@/lib/shop-url";
 
 export const metadata: Metadata = {
   title: "Shop All | VELVORZ",
@@ -18,11 +19,19 @@ export const metadata: Metadata = {
 };
 
 type ShopPageProps = {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{
+    category?: string;
+    q?: string;
+    brand?: string;
+  }>;
 };
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
-  const { category: categorySlug } = await searchParams;
+  const {
+    category: categorySlug,
+    q: queryParam,
+    brand: brandParam,
+  } = await searchParams;
   const products = await getPublishedShopProducts();
   const filterData = await getShopFilterData(products, { scope: "catalog" });
 
@@ -31,11 +40,21 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const defaultCategorySlugs = categorySlug
     ? getCategoryFilterSlugs(categorySlug, categories)
     : [];
+  const defaultQuery = queryParam?.trim() ?? "";
+  const defaultBrand = resolveShopBrand(brandParam, filterData.brands);
 
   const activeCategory = categorySlug
     ? await getCategoryBySlug(categorySlug)
     : null;
-  const title = activeCategory ? activeCategory.name : "Shop All";
+
+  let title = "Shop All";
+  if (defaultQuery) {
+    title = `Search: ${defaultQuery}`;
+  } else if (defaultBrand) {
+    title = defaultBrand;
+  } else if (activeCategory) {
+    title = activeCategory.name;
+  }
 
   return (
     <>
@@ -46,10 +65,13 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             title={title}
             products={products}
             categories={categories}
+            brands={filterData.brands}
             sizes={filterData.sizes}
             colors={filterData.colors}
             maxShopPrice={filterData.maxPrice}
             defaultCategorySlugs={defaultCategorySlugs}
+            defaultQuery={defaultQuery}
+            defaultBrand={defaultBrand}
           />
         </Container>
       </main>

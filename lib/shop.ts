@@ -1,7 +1,9 @@
 import type { ProductCategory, ShopProduct, SortOption } from "@/lib/types";
 
 export type ShopFilters = {
+  query?: string;
   categories: ProductCategory[];
+  brands?: string[];
   sizes: string[];
   colors: string[];
   maxPrice: number;
@@ -25,14 +27,71 @@ function productMatchesColorFilter(
   });
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Token-aware match so "men" hits "Mens" / "mens" / "for men",
+ * but not "Womens" / "women".
+ */
+function matchesSearchText(text: string, query: string): boolean {
+  const haystack = text.trim().toLowerCase();
+  const q = query.trim().toLowerCase();
+
+  if (!q || !haystack) {
+    return false;
+  }
+
+  if (haystack === q || haystack.startsWith(`${q} `) || haystack.endsWith(` ${q}`)) {
+    return true;
+  }
+
+  return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(q)}`, "i").test(haystack);
+}
+
+function productMatchesQuery(product: ShopProduct, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return true;
+  }
+
+  const fields = [
+    product.name,
+    product.description ?? "",
+    product.brand,
+    ...(product.categoryLabels ?? []),
+    ...product.categorySlugs,
+    ...product.categorySlugs.map((slug) => slug.replace(/-/g, " ")),
+  ];
+
+  return fields.some((field) => matchesSearchText(field, q));
+}
+
 export function filterProducts(
   products: ShopProduct[],
   filters: ShopFilters,
 ): ShopProduct[] {
+  const query = filters.query?.trim() ?? "";
+  const brands = (filters.brands ?? []).map((brand) =>
+    brand.trim().toLowerCase(),
+  );
+
   return products.filter((product) => {
+    if (query && !productMatchesQuery(product, query)) {
+      return false;
+    }
+
     if (
       filters.categories.length > 0 &&
       !filters.categories.some((slug) => product.categorySlugs.includes(slug))
+    ) {
+      return false;
+    }
+
+    if (
+      brands.length > 0 &&
+      !brands.includes(product.brand.trim().toLowerCase())
     ) {
       return false;
     }

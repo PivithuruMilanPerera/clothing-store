@@ -83,15 +83,16 @@ function mapProductRow(row: ProductRow): StoreProductWithRelations {
   };
 }
 
-function getCategorySlugPath(
+function getCategoryPath(
   category: StoreProductWithRelations["category"],
   allCategories: StoreCategory[],
-): string[] {
+): { slugs: string[]; labels: string[] } {
   if (!category) {
-    return ["shop"];
+    return { slugs: ["shop"], labels: ["Shop"] };
   }
 
   const slugs: string[] = [category.slug];
+  const labels: string[] = [category.name];
   let parentId = category.parent_id;
 
   while (parentId) {
@@ -100,10 +101,11 @@ function getCategorySlugPath(
       break;
     }
     slugs.unshift(parent.slug);
+    labels.unshift(parent.name);
     parentId = parent.parent_id;
   }
 
-  return slugs;
+  return { slugs, labels };
 }
 
 function toColorOptions(colors: StoreProductColor[]): ProductColorOption[] {
@@ -120,7 +122,10 @@ export function toShopProduct(
 ): ShopProduct {
   const primaryImage = product.images[0]?.url ?? "";
   const colorOptions = toColorOptions(product.colors);
-  const categorySlugs = getCategorySlugPath(product.category, allCategories);
+  const { slugs: categorySlugs, labels: categoryLabels } = getCategoryPath(
+    product.category,
+    allCategories,
+  );
 
   const basePrice = Number(product.base_price ?? product.price);
   const discountType = product.discount_type;
@@ -142,7 +147,9 @@ export function toShopProduct(
     badge: product.badge ?? undefined,
     category: product.category?.slug ?? "shop",
     categorySlugs,
+    categoryLabels,
     categoryId: product.category_id,
+    description: product.description ?? "",
     sizes: product.sizes.map((size) => size.label),
     colors: colorOptions.map((color) => color.id),
     colorOptions,
@@ -405,10 +412,22 @@ type ShopFilterDataOptions = {
   scope?: "products" | "catalog";
 };
 
+function getUniqueBrands(products: ShopProduct[]): string[] {
+  return Array.from(
+    new Set(
+      products
+        .map((product) => product.brand.trim())
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+}
+
 export async function getShopFilterData(
   products: ShopProduct[],
   options: ShopFilterDataOptions = {},
 ) {
+  const brands = getUniqueBrands(products);
+
   if (options.scope === "catalog") {
     const [sizes, colors, maxPrice] = await Promise.all([
       getAllPublishedShopSizes(),
@@ -417,6 +436,7 @@ export async function getShopFilterData(
     ]);
 
     return {
+      brands,
       sizes,
       colors,
       maxPrice,
@@ -442,6 +462,7 @@ export async function getShopFilterData(
   );
 
   return {
+    brands,
     sizes,
     colors: Array.from(colorMap.values()),
     maxPrice,

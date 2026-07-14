@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductCategory, ShopProduct, SortOption } from "@/lib/types";
 import { colorLabels, colorSwatchStyles, getColorHex } from "@/lib/cart";
@@ -358,20 +358,22 @@ export function ShopContent({
   const [maxPrice, setMaxPrice] = useState(maxShopPrice);
   const [sort, setSort] = useState<SortOption>("newest");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const skipUrlSyncRef = useRef(false);
 
   const defaultCategoryKey = defaultCategorySlugs.join("|");
 
   useEffect(() => {
+    skipUrlSyncRef.current = true;
     setQuery(defaultQuery);
-  }, [defaultQuery]);
-
-  useEffect(() => {
     setSelectedCategories(defaultCategorySlugs);
-  }, [defaultCategoryKey, defaultCategorySlugs]);
+    setSelectedBrands(defaultBrand ? [defaultBrand] : []);
+    // defaultCategoryKey tracks the slug list; avoid resetting on new array identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed
+  }, [defaultQuery, defaultCategoryKey, defaultBrand]);
 
   useEffect(() => {
-    setSelectedBrands(defaultBrand ? [defaultBrand] : []);
-  }, [defaultBrand]);
+    setMaxPrice(maxShopPrice);
+  }, [maxShopPrice]);
 
   const categoryUrlSlug = useMemo(
     () => getCategoryUrlSlug(selectedCategories, categories),
@@ -379,13 +381,21 @@ export function ShopContent({
   );
 
   useEffect(() => {
+    if (skipUrlSyncRef.current) {
+      skipUrlSyncRef.current = false;
+      return;
+    }
+
     const nextHref = buildShopHref({
       q: query,
       category: categoryUrlSlug,
       brand: selectedBrands.length === 1 ? selectedBrands[0] : undefined,
     });
+    const currentHref = `${window.location.pathname}${window.location.search}`;
 
-    router.replace(nextHref, { scroll: false });
+    if (currentHref !== nextHref) {
+      router.replace(nextHref, { scroll: false });
+    }
   }, [query, categoryUrlSlug, selectedBrands, router]);
 
   const filtered = filterProducts(products, {
@@ -512,7 +522,7 @@ export function ShopContent({
             name="q"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by product name or description..."
+            placeholder="Search products, brands, or categories..."
             autoComplete="off"
             className="font-body min-w-0 flex-1 bg-transparent text-base leading-normal text-on-surface outline-none placeholder:text-on-surface-variant"
           />

@@ -1,4 +1,5 @@
 import type { CategoryTreeNode, StoreCategory } from "@/lib/category-types";
+import { buildShopHref } from "@/lib/shop-url";
 
 export type ShopCategoryFilterNode = {
   id: string;
@@ -67,7 +68,7 @@ export function mapCategoryTreeToShopFilters(
 }
 
 export function getShopCategoryHref(slug: string): string {
-  return `/shop?category=${encodeURIComponent(slug)}`;
+  return buildShopHref({ category: slug });
 }
 
 function getSubtreeSlugs(node: ShopCategoryFilterNode): string[] {

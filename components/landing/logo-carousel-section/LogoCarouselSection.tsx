@@ -1,5 +1,7 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { BrandLogo } from "@/lib/types";
+import { buildShopHref } from "@/lib/shop-url";
 
 type LogoCarouselSectionProps = {
   logos: BrandLogo[];
@@ -20,7 +22,13 @@ function LogoGroup({
       aria-hidden={ariaHidden || undefined}
     >
       {logos.map((brand, index) => (
-        <div key={`${groupId}-${brand.id}-${index}`} className="shrink-0">
+        <Link
+          key={`${groupId}-${brand.id}-${index}`}
+          href={buildShopHref({ brand: brand.name })}
+          className="shrink-0"
+          tabIndex={ariaHidden ? -1 : undefined}
+          aria-label={ariaHidden ? undefined : `Shop ${brand.name}`}
+        >
           <Image
             src={brand.image}
             alt={ariaHidden ? "" : brand.name}
@@ -28,7 +36,7 @@ function LogoGroup({
             height={100}
             className="h-14 w-24 object-contain opacity-70 transition duration-300 hover:opacity-100 md:h-16 md:w-28"
           />
-        </div>
+        </Link>
       ))}
     </div>
   );

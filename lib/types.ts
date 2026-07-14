@@ -27,7 +27,9 @@ export type Product = {
 export type ShopProduct = Product & {
   category: ProductCategory;
   categorySlugs: ProductCategory[];
+  categoryLabels?: string[];
   categoryId?: string;
+  description?: string;
   sizes: ProductSize[];
   colors: ProductColor[];
   createdAt: string;
