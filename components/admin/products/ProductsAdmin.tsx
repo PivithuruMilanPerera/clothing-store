@@ -1,15 +1,17 @@
 "use client";
 
+import { Pencil, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   createProduct,
   deleteProduct,
   repairProductsSchema,
   updateProduct,
 } from "@/app/admin/(dashboard)/products/actions";
+import { Button, Popup } from "@/components/ui";
 import { useAdminImageUploader } from "@/hooks/useAdminImageUploader";
 import type { CategoryTreeNode } from "@/lib/category-types";
 import { flattenCategoryTreeOptions } from "@/lib/category-tree";
@@ -592,6 +594,8 @@ function ProductRow({
   categoryTree: CategoryTreeNode[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const deleteFormRef = useRef<HTMLFormElement>(null);
   const [deleteState, deleteAction, deletePending] = useActionState(
     deleteProduct,
     null,
@@ -602,6 +606,16 @@ function ProductRow({
     product.discount_type,
     product.discount_value ?? 0,
   );
+
+  useEffect(() => {
+    if (deleteState?.success) {
+      setShowDeleteConfirm(false);
+    }
+  }, [deleteState?.success]);
+
+  function handleConfirmDelete() {
+    deleteFormRef.current?.requestSubmit();
+  }
 
   return (
     <li className="rounded-sm border border-outline-variant p-4">
@@ -636,31 +650,64 @@ function ProductRow({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setIsEditing((open) => !open)}
-            className="font-label border border-outline-variant px-3 py-1.5 text-[10px] font-bold uppercase text-on-surface"
+            aria-label={isEditing ? `Close ${product.name} editor` : `Edit ${product.name}`}
+            className="inline-flex h-7 w-7 items-center justify-center text-on-surface transition-opacity hover:opacity-70"
           >
-            {isEditing ? "Close" : "Edit"}
+            {isEditing ? (
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
           </button>
-          <form action={deleteAction}>
-            <input type="hidden" name="id" value={product.id} />
-            <button
-              type="submit"
-              disabled={deletePending}
-              onClick={(event) => {
-                if (!window.confirm(`Delete "${product.name}"?`)) {
-                  event.preventDefault();
-                }
-              }}
-              className="font-label border border-error px-3 py-1.5 text-[10px] font-bold uppercase text-error"
-            >
-              Delete
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            aria-label={`Delete ${product.name}`}
+            className="inline-flex h-7 w-7 items-center justify-center text-error transition-opacity hover:opacity-70"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
         </div>
       </div>
+
+      <form ref={deleteFormRef} action={deleteAction} className="hidden">
+        <input type="hidden" name="id" value={product.id} />
+      </form>
+
+      <Popup
+        open={showDeleteConfirm}
+        onClose={() => {
+          if (!deletePending) {
+            setShowDeleteConfirm(false);
+          }
+        }}
+        title="Delete Product"
+        description={`Are you sure you want to delete "${product.name}"? This action cannot be undone.`}
+        size="sm"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={deletePending}
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={deletePending}
+              onClick={handleConfirmDelete}
+            >
+              {deletePending ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        }
+      />
 
       {deleteState?.error ? (
         <p className="font-body mt-2 text-sm text-error">{deleteState.error}</p>
