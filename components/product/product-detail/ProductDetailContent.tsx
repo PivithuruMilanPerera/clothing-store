@@ -325,8 +325,8 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
           )}
         </p>
         {isLowStock ? (
-          <p className="font-body mt-2 text-sm font-medium text-error">
-            Almost out of stock
+          <p className="font-body mt-2 text-sm font-medium text-orange-400">
+            Low Stock
           </p>
         ) : null}
         {isOutOfStock ? (

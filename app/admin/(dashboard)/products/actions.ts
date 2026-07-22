@@ -3,10 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { getAllCategories } from "@/lib/categories";
-import {
-  applyProductsSchemaMigration,
-  getProductsSchemaStatus,
-} from "@/lib/products-schema";
+import { applyProductsSchemaMigration } from "@/lib/apply-products-schema-migration";
+import { getProductsSchemaStatus } from "@/lib/products-schema";
 import {
   getAllProductsForAdmin,
   slugifyProductName,

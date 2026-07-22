@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import {
   createProduct,
@@ -12,7 +14,7 @@ import { useAdminImageUploader } from "@/hooks/useAdminImageUploader";
 import type { CategoryTreeNode } from "@/lib/category-types";
 import { flattenCategoryTreeOptions } from "@/lib/category-tree";
 import type { StoreProductWithRelations } from "@/lib/product-types";
-import type { ProductsSchemaStatus } from "@/lib/products-schema";
+import type { ProductsSchemaStatus } from "@/lib/products-schema-types";
 import { computeFinalPrice } from "@/lib/pricing";
 import type { DiscountType } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
@@ -244,15 +246,18 @@ function ProductSizesEditor({
   );
 }
 
-function ProductForm({
+export function ProductForm({
   categoryTree,
   initial,
   onCancel,
+  redirectOnSuccess,
 }: {
   categoryTree: CategoryTreeNode[];
   initial?: StoreProductWithRelations;
   onCancel?: () => void;
+  redirectOnSuccess?: string;
 }) {
+  const router = useRouter();
   const action = initial ? updateProduct : createProduct;
   const [state, formAction, pending] = useActionState(action, null);
   const [images, setImages] = useState<ImageEntry[]>(
@@ -289,6 +294,11 @@ function ProductForm({
 
   useEffect(() => {
     if (state?.success && !initial) {
+      if (redirectOnSuccess) {
+        router.push(redirectOnSuccess);
+        return;
+      }
+
       setImages([]);
       setColors([{ name: "Black", hex: "#000000" }]);
       setSizes([
@@ -302,7 +312,7 @@ function ProductForm({
       setPaymentMethods({ card: true, cashOnDelivery: true });
       setInventory(0);
     }
-  }, [initial, state?.success]);
+  }, [initial, redirectOnSuccess, router, state?.success]);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -540,7 +550,7 @@ function ProductForm({
           className="font-body w-full max-w-xs border border-outline-variant px-3 py-2 text-sm"
         />
         <p className="font-body mt-2 text-xs leading-normal text-on-surface-variant">
-          When stock is 10 or less, the store shows &quot;Almost out of stock&quot;.
+          When stock is 10 or less, the store shows &quot;Low Stock&quot;.
           At 0, Add to Cart is disabled.
         </p>
       </div>
@@ -717,31 +727,28 @@ export function ProductsAdmin({
 }: ProductsAdminProps) {
   return (
     <div className="space-y-6">
-      <div>
-        <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
-          Admin
-        </p>
-        <h1 className="font-headline mt-2 text-2xl font-extrabold uppercase leading-tight tracking-tight text-on-surface md:text-3xl">
-          Products
-        </h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
+            Admin
+          </p>
+          <h1 className="font-headline mt-2 text-2xl font-extrabold uppercase leading-tight tracking-tight text-on-surface md:text-3xl">
+            Products
+          </h1>
+        </div>
+        {schemaStatus.ready ? (
+          <Link
+            href="/admin/products/new"
+            className="font-label border border-primary bg-primary px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-on-primary"
+          >
+            Add Product
+          </Link>
+        ) : null}
       </div>
 
       {!schemaStatus.ready ? <ProductsSchemaBanner /> : null}
 
-      <section className="rounded-sm border border-outline-variant bg-surface-container-lowest p-5 md:p-6">
-        <h2 className="font-label text-xs font-bold uppercase tracking-[0.15em] text-on-surface">
-          Create Product
-        </h2>
-        <p className="font-body mt-2 text-sm text-on-surface-variant">
-          First select a main category, then choose one of its sub-categories
-          (optional). Products can be assigned to either main or sub-categories.
-        </p>
-        <div className="mt-4">
-          <ProductForm categoryTree={categoryTree} />
-        </div>
-      </section>
-
-      <section className="rounded-sm border border-outline-variant bg-surface-container-lowest p-5 md:p-6">
+      <section>
         <h2 className="font-label text-xs font-bold uppercase tracking-[0.15em] text-on-surface">
           All Products
         </h2>

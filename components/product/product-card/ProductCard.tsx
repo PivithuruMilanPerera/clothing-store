@@ -124,8 +124,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
               Out of stock
             </p>
           ) : isLowStock ? (
-            <p className="font-label pt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-error md:text-[11px]">
-              Almost out of stock
+            <p className="font-label pt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-orange-400 md:text-[11px]">
+              Low Stock
             </p>
           ) : null}
         </div>
