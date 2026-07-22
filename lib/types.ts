@@ -78,6 +78,12 @@ export type FooterColumn = {
   links: NavLink[];
 };
 
+export type SocialLink = {
+  label: string;
+  href: string;
+  icon: "instagram" | "facebook" | "youtube" | "linkedin" | "tiktok";
+};
+
 export type Profile = {
   id: string;
   full_name: string;

@@ -1,4 +1,10 @@
-import type { Category, FooterColumn, NavLink, Product } from "@/lib/types";
+import type {
+  Category,
+  FooterColumn,
+  NavLink,
+  Product,
+  SocialLink,
+} from "@/lib/types";
 import kids from "@/app/assets/category/kids-image.jpg";
 import bag from "@/app/assets/category/bags.jpg";
 import women from "@/app/assets/category/women.webp";
@@ -202,12 +208,33 @@ export const footerColumns: FooterColumn[] = [
       { label: "Contact", href: "/contact" },
     ],
   },
+];
+
+export const socialLinks: SocialLink[] = [
   {
-    title: "Social",
-    links: [
-      { label: "Instagram", href: "https://instagram.com" },
-      { label: "Twitter", href: "https://twitter.com" },
-    ],
+    label: "Instagram",
+    href: "https://www.instagram.com/velvorz/",
+    icon: "instagram",
+  },
+  {
+    label: "Facebook",
+    href: "https://www.facebook.com/profile.php?id=61591352036910",
+    icon: "facebook",
+  },
+  {
+    label: "YouTube",
+    href: "https://www.youtube.com/@VELVORZ-clothing",
+    icon: "youtube",
+  },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/company/velvorz/",
+    icon: "linkedin",
+  },
+  {
+    label: "TikTok",
+    href: "https://www.tiktok.com/@velvorz",
+    icon: "tiktok",
   },
 ];
 
