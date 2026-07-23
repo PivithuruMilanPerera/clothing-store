@@ -2,7 +2,11 @@ import { slugifyCategoryName } from "@/lib/category-tree";
 import type { StoreCategory } from "@/lib/category-types";
 import { getAllCategories } from "@/lib/categories";
 import type {
+  Brand,
+  Color,
   ProductColorOption,
+  ShopFilterColor,
+  Size,
   StoreProduct,
   StoreProductColor,
   StoreProductImage,
@@ -22,6 +26,32 @@ const DEFAULT_MATERIALS_CARE =
 const DEFAULT_SHIPPING_RETURNS =
   "Free standard shipping on orders over Rs. 150. Express delivery available at checkout. Returns accepted within 30 days in original condition.";
 
+type ProductColorRow = {
+  id: string;
+  product_id: string;
+  color_id: string;
+  sort_order: number;
+  colors: Color | Color[] | null;
+};
+
+type ProductSizeRow = {
+  id: string;
+  product_id: string;
+  size_id: string;
+  sort_order: number;
+  sizes: Size | Size[] | null;
+};
+
+type ProductImageRow = {
+  id: string;
+  product_id: string;
+  url: string;
+  alt: string;
+  color_id: string | null;
+  sort_order: number;
+  colors: Color | Color[] | null;
+};
+
 type ProductRow = StoreProduct & {
   categories:
     | {
@@ -37,10 +67,75 @@ type ProductRow = StoreProduct & {
         parent_id: string | null;
       }>
     | null;
-  product_images: StoreProductImage[];
-  product_colors: StoreProductColor[];
-  product_sizes: StoreProductSize[];
+  product_images: ProductImageRow[];
+  product_colors: ProductColorRow[];
+  product_sizes: ProductSizeRow[];
 };
+
+function normalizeRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function mapProductColorRow(row: ProductColorRow): StoreProductColor | null {
+  const color = normalizeRelation(row.colors);
+  if (!color) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    product_id: row.product_id,
+    color_id: row.color_id,
+    sort_order: row.sort_order,
+    color: {
+      id: color.id,
+      name: color.name,
+      hex: color.hex,
+    },
+  };
+}
+
+function mapProductSizeRow(row: ProductSizeRow): StoreProductSize | null {
+  const size = normalizeRelation(row.sizes);
+  if (!size) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    product_id: row.product_id,
+    size_id: row.size_id,
+    sort_order: row.sort_order,
+    size: {
+      id: size.id,
+      label: size.label,
+    },
+  };
+}
+
+function mapProductImageRow(row: ProductImageRow): StoreProductImage {
+  const color = normalizeRelation(row.colors);
+
+  return {
+    id: row.id,
+    product_id: row.product_id,
+    url: row.url,
+    alt: row.alt,
+    color_id: row.color_id,
+    sort_order: row.sort_order,
+    color: color
+      ? {
+          id: color.id,
+          name: color.name,
+          hex: color.hex,
+        }
+      : null,
+  };
+}
 
 function normalizeCategory(
   categories: ProductRow["categories"],
@@ -53,7 +148,15 @@ function normalizeCategory(
 }
 
 function mapProductRow(row: ProductRow): StoreProductWithRelations {
-  const sizes = [...row.product_sizes].sort((a, b) => a.sort_order - b.sort_order);
+  const sizes = row.product_sizes
+    .map(mapProductSizeRow)
+    .filter((size): size is StoreProductSize => size !== null)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const colors = row.product_colors
+    .map(mapProductColorRow)
+    .filter((color): color is StoreProductColor => color !== null)
+    .sort((a, b) => a.sort_order - b.sort_order);
 
   return {
     id: row.id,
@@ -76,8 +179,10 @@ function mapProductRow(row: ProductRow): StoreProductWithRelations {
     is_published: row.is_published,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    images: [...row.product_images].sort((a, b) => a.sort_order - b.sort_order),
-    colors: [...row.product_colors].sort((a, b) => a.sort_order - b.sort_order),
+    images: row.product_images
+      .map(mapProductImageRow)
+      .sort((a, b) => a.sort_order - b.sort_order),
+    colors,
     sizes,
     category: normalizeCategory(row.categories),
   };
@@ -109,10 +214,10 @@ function getCategoryPath(
 }
 
 function toColorOptions(colors: StoreProductColor[]): ProductColorOption[] {
-  return colors.map((color) => ({
-    id: color.id,
-    name: color.name,
-    hex: color.hex,
+  return colors.map((entry) => ({
+    id: entry.color_id,
+    name: entry.color.name,
+    hex: entry.color.hex,
   }));
 }
 
@@ -150,7 +255,7 @@ export function toShopProduct(
     categoryLabels,
     categoryId: product.category_id,
     description: product.description ?? "",
-    sizes: product.sizes.map((size) => size.label),
+    sizes: product.sizes.map((size) => size.size.label),
     colors: colorOptions.map((color) => color.id),
     colorOptions,
     createdAt: product.created_at,
@@ -167,7 +272,7 @@ export function toProductDetail(
       ? product.images.map((image) => ({
           src: image.url,
           alt: image.alt || product.name,
-          colorName: image.color_name?.trim() || undefined,
+          colorId: image.color_id ?? undefined,
         }))
       : [{ src: shopProduct.image, alt: product.name }];
 
@@ -200,9 +305,9 @@ const PRODUCT_SELECT = `
   created_at,
   updated_at,
   categories ( id, name, slug, parent_id ),
-  product_images ( id, product_id, url, alt, color_name, sort_order ),
-  product_colors ( id, product_id, name, hex, sort_order ),
-  product_sizes ( id, product_id, label, sort_order )
+  product_images ( id, product_id, url, alt, color_id, sort_order, colors ( id, name, hex ) ),
+  product_colors ( id, product_id, color_id, sort_order, colors ( id, name, hex ) ),
+  product_sizes ( id, product_id, size_id, sort_order, sizes ( id, label ) )
 `;
 
 export async function getPublishedProducts(): Promise<StoreProductWithRelations[]> {
@@ -345,45 +450,104 @@ export function sortSizeLabels(sizes: string[]): string[] {
   });
 }
 
-export async function getAllPublishedShopSizes(): Promise<string[]> {
+export async function getAllBrands(): Promise<Brand[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("product_sizes")
-    .select("label, products!inner(is_published)")
-    .eq("products.is_published", true);
+    .from("brands")
+    .select("id, name")
+    .order("name");
 
-  if (error || !data) {
+  if (!error && data) {
+    return data.map((row) => ({
+      id: String(row.id),
+      name: String(row.name).trim(),
+    }));
+  }
+
+  const { data: productRows, error: productError } = await supabase
+    .from("products")
+    .select("brand");
+
+  if (productError || !productRows) {
     return [];
   }
 
-  return sortSizeLabels(data.map((row) => String(row.label)));
-}
-
-export async function getAllPublishedShopColors(): Promise<
-  Array<{ id: string; label: string; hex: string }>
-> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("product_colors")
-    .select("name, hex, products!inner(is_published)")
-    .eq("products.is_published", true);
-
-  if (error || !data) {
-    return [];
-  }
-
-  const colorMap = new Map<string, { id: string; label: string; hex: string }>();
-
-  for (const row of data) {
-    const label = String(row.name).trim();
-    const hex = String(row.hex).trim();
-    const key = label.toLowerCase();
-
-    if (!label || colorMap.has(key)) {
+  const brandMap = new Map<string, Brand>();
+  for (const row of productRows) {
+    const name = String(row.brand).trim();
+    if (!name) {
       continue;
     }
 
-    colorMap.set(key, { id: key, label, hex });
+    const key = name.toLowerCase();
+    if (!brandMap.has(key)) {
+      brandMap.set(key, { id: key, name });
+    }
+  }
+
+  return Array.from(brandMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+}
+
+export async function getAllColors(): Promise<Color[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("colors")
+    .select("id, name, hex")
+    .order("name");
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((row) => ({
+    id: String(row.id),
+    name: String(row.name).trim(),
+    hex: String(row.hex).trim().toLowerCase(),
+  }));
+}
+
+export async function getAllSizes(): Promise<Size[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sizes")
+    .select("id, label")
+    .order("label");
+
+  if (error || !data) {
+    return [];
+  }
+
+  return sortSizeLabels(data.map((row) => String(row.label))).map((label) => {
+    const match = data.find((row) => String(row.label).toUpperCase() === label);
+    return {
+      id: String(match?.id ?? label),
+      label,
+    };
+  });
+}
+
+export async function getAllPublishedShopSizes(): Promise<string[]> {
+  const sizes = await getAllSizes();
+  return sizes.map((size) => size.label);
+}
+
+export function buildShopFilterColors(products: ShopProduct[]): ShopFilterColor[] {
+  const colorMap = new Map<string, ShopFilterColor>();
+
+  for (const product of products) {
+    for (const color of product.colorOptions ?? []) {
+      if (!color.id || colorMap.has(color.id)) {
+        continue;
+      }
+
+      colorMap.set(color.id, {
+        id: color.id,
+        label: color.name.trim(),
+        hex: color.hex,
+      });
+    }
   }
 
   return Array.from(colorMap.values()).sort((a, b) =>
@@ -427,11 +591,11 @@ export async function getShopFilterData(
   options: ShopFilterDataOptions = {},
 ) {
   const brands = getUniqueBrands(products);
+  const colors = buildShopFilterColors(products);
 
   if (options.scope === "catalog") {
-    const [sizes, colors, maxPrice] = await Promise.all([
+    const [sizes, maxPrice] = await Promise.all([
       getAllPublishedShopSizes(),
-      getAllPublishedShopColors(),
       getCatalogMaxPrice(),
     ]);
 
@@ -444,18 +608,6 @@ export async function getShopFilterData(
   }
 
   const sizes = sortSizeLabels(products.flatMap((product) => product.sizes));
-  const colorMap = new Map<string, { id: string; label: string; hex: string }>();
-
-  for (const product of products) {
-    for (const color of product.colorOptions ?? []) {
-      colorMap.set(color.id, {
-        id: color.id,
-        label: color.name,
-        hex: color.hex,
-      });
-    }
-  }
-
   const maxPrice = products.reduce(
     (currentMax, product) => Math.max(currentMax, product.price),
     0,
@@ -464,7 +616,7 @@ export async function getShopFilterData(
   return {
     brands,
     sizes,
-    colors: Array.from(colorMap.values()),
+    colors,
     maxPrice,
   };
 }

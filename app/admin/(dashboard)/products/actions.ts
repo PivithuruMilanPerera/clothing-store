@@ -5,7 +5,12 @@ import { requireAdmin } from "@/lib/auth";
 import { getAllCategories } from "@/lib/categories";
 import { applyProductsSchemaMigration } from "@/lib/apply-products-schema-migration";
 import { getProductsSchemaStatus } from "@/lib/products-schema";
+import { normalizeHexColor } from "@/lib/color-utils";
+import type { Brand, Color, Size } from "@/lib/product-types";
 import {
+  getAllBrands,
+  getAllColors,
+  getAllSizes,
   getAllProductsForAdmin,
   slugifyProductName,
 } from "@/lib/products";
@@ -46,9 +51,9 @@ export async function repairProductsSchema(
   }
 }
 
-type ImageInput = { url: string; alt?: string; colorName?: string };
-type ColorInput = { name: string; hex: string };
-type SizeInput = { label: string };
+type ImageInput = { url: string; alt?: string; colorId?: string };
+type ColorInput = { id: string };
+type SizeInput = { id: string };
 
 type ProductWriteInput = {
   name: string;
@@ -142,9 +147,9 @@ function parseImages(value: FormDataEntryValue | null): ImageInput[] {
           .map((image) => ({
             url: image.url,
             alt: typeof image.alt === "string" ? image.alt : "",
-            colorName:
-              typeof image.colorName === "string" && image.colorName.trim()
-                ? image.colorName.trim()
+            colorId:
+              typeof image.colorId === "string" && image.colorId.trim()
+                ? image.colorId.trim()
                 : undefined,
           }))
       : [];
@@ -158,11 +163,7 @@ function parseColors(value: FormDataEntryValue | null): ColorInput[] {
     const parsed = JSON.parse(String(value ?? "[]")) as ColorInput[];
     return Array.isArray(parsed)
       ? parsed.filter(
-          (color) =>
-            typeof color?.name === "string" &&
-            color.name.trim() &&
-            typeof color?.hex === "string" &&
-            color.hex.trim(),
+          (color) => typeof color?.id === "string" && color.id.trim(),
         )
       : [];
   } catch {
@@ -174,9 +175,7 @@ function parseSizes(value: FormDataEntryValue | null): SizeInput[] {
   try {
     const parsed = JSON.parse(String(value ?? "[]")) as SizeInput[];
     return Array.isArray(parsed)
-      ? parsed.filter(
-          (size) => typeof size?.label === "string" && size.label.trim(),
-        )
+      ? parsed.filter((size) => typeof size?.id === "string" && size.id.trim())
       : [];
   } catch {
     return [];
@@ -210,7 +209,7 @@ async function replaceProductRelations(
         product_id: productId,
         url: image.url.trim(),
         alt: image.alt?.trim() ?? "",
-        color_name: image.colorName?.trim() || null,
+        color_id: image.colorId?.trim() || null,
         sort_order: index,
       })),
     );
@@ -220,8 +219,7 @@ async function replaceProductRelations(
     await supabase.from("product_colors").insert(
       colors.map((color, index) => ({
         product_id: productId,
-        name: color.name.trim(),
-        hex: color.hex.trim(),
+        color_id: color.id.trim(),
         sort_order: index,
       })),
     );
@@ -231,7 +229,7 @@ async function replaceProductRelations(
     await supabase.from("product_sizes").insert(
       sizes.map((size, index) => ({
         product_id: productId,
-        label: size.label.trim().toUpperCase(),
+        size_id: size.id.trim(),
         sort_order: index,
       })),
     );
@@ -479,4 +477,194 @@ export async function deleteProduct(
 
   await revalidateProductPaths(existing.slug);
   return { success: "Product deleted." };
+}
+
+export async function fetchAllColors(): Promise<Color[]> {
+  await requireAdmin();
+  return getAllColors();
+}
+
+export async function fetchAllSizes(): Promise<Size[]> {
+  await requireAdmin();
+  return getAllSizes();
+}
+
+export async function createColor(
+  name: string,
+  hex: string,
+): Promise<{ color?: Color; error?: string }> {
+  await requireAdmin();
+
+  const trimmedName = name.trim();
+  const normalizedHex = normalizeHexColor(hex);
+
+  if (!trimmedName) {
+    return { error: "Color name is required." };
+  }
+
+  if (!normalizedHex) {
+    return { error: "Enter a valid hex color code." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("colors")
+    .insert({ name: trimmedName, hex: normalizedHex })
+    .select("id, name, hex")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      const { data: existing } = await supabase
+        .from("colors")
+        .select("id, name, hex")
+        .ilike("name", trimmedName)
+        .eq("hex", normalizedHex)
+        .maybeSingle();
+
+      if (existing) {
+        return {
+          color: {
+            id: String(existing.id),
+            name: String(existing.name).trim(),
+            hex: String(existing.hex).trim().toLowerCase(),
+          },
+        };
+      }
+
+      return { error: "This color already exists." };
+    }
+
+    return {
+      error:
+        error.message ||
+        "Unable to save color. Run supabase/colors-sizes-normalize-migration.sql in Supabase first.",
+    };
+  }
+
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/products/new");
+
+  return {
+    color: {
+      id: String(data.id),
+      name: String(data.name).trim(),
+      hex: String(data.hex).trim().toLowerCase(),
+    },
+  };
+}
+
+export async function createSize(
+  label: string,
+): Promise<{ size?: Size; error?: string }> {
+  await requireAdmin();
+
+  const normalizedLabel = label.trim().toUpperCase();
+  if (!normalizedLabel) {
+    return { error: "Size label is required." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sizes")
+    .insert({ label: normalizedLabel })
+    .select("id, label")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      const { data: existing } = await supabase
+        .from("sizes")
+        .select("id, label")
+        .eq("label", normalizedLabel)
+        .maybeSingle();
+
+      if (existing) {
+        return {
+          size: {
+            id: String(existing.id),
+            label: String(existing.label).trim().toUpperCase(),
+          },
+        };
+      }
+
+      return { error: "This size already exists." };
+    }
+
+    return {
+      error:
+        error.message ||
+        "Unable to save size. Run supabase/colors-sizes-normalize-migration.sql in Supabase first.",
+    };
+  }
+
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/products/new");
+
+  return {
+    size: {
+      id: String(data.id),
+      label: String(data.label).trim().toUpperCase(),
+    },
+  };
+}
+
+export async function fetchAllBrands(): Promise<Brand[]> {
+  await requireAdmin();
+  return getAllBrands();
+}
+
+export async function createBrand(
+  name: string,
+): Promise<{ brand?: Brand; error?: string }> {
+  await requireAdmin();
+
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return { error: "Brand name is required." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("brands")
+    .insert({ name: trimmedName })
+    .select("id, name")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      const { data: existing } = await supabase
+        .from("brands")
+        .select("id, name")
+        .ilike("name", trimmedName)
+        .maybeSingle();
+
+      if (existing) {
+        return {
+          brand: {
+            id: String(existing.id),
+            name: String(existing.name).trim(),
+          },
+        };
+      }
+
+      return { error: "This brand already exists." };
+    }
+
+    return {
+      error:
+        error.message ||
+        "Unable to save brand. Run supabase/brands-migration.sql in Supabase first.",
+    };
+  }
+
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/products/new");
+
+  return {
+    brand: {
+      id: String(data.id),
+      name: String(data.name).trim(),
+    },
+  };
 }

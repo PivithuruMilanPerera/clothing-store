@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/components/cart/cart-provider";
 import { Button } from "@/components/ui";
-import { colorLabels } from "@/lib/cart";
+import { getColorLabel } from "@/lib/cart";
 import { cn, formatPrice } from "@/lib/utils";
 
 export function CartContent() {
@@ -67,7 +67,7 @@ export function CartContent() {
                       {item.name}
                     </Link>
                     <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
-                      {colorLabels[item.color]} / {item.size}
+                      {getColorLabel(item.color, undefined, item.colorName)} / {item.size}
                     </p>
                   </div>
                   <p className="font-body text-base leading-normal shrink-0 font-medium tabular-nums text-on-surface">

@@ -33,16 +33,24 @@ export async function getProductsSchemaStatus(): Promise<ProductsSchemaStatus> {
       run: () => supabase.from("product_images").select("url").limit(1),
     },
     {
-      label: "product_images.color_name",
-      run: () => supabase.from("product_images").select("color_name").limit(1),
+      label: "product_images.color_id",
+      run: () => supabase.from("product_images").select("color_id").limit(1),
     },
     {
-      label: "product_colors",
-      run: () => supabase.from("product_colors").select("id").limit(1),
+      label: "product_colors.color_id",
+      run: () => supabase.from("product_colors").select("color_id").limit(1),
     },
     {
-      label: "product_sizes",
-      run: () => supabase.from("product_sizes").select("id").limit(1),
+      label: "product_sizes.size_id",
+      run: () => supabase.from("product_sizes").select("size_id").limit(1),
+    },
+    {
+      label: "colors",
+      run: () => supabase.from("colors").select("id").limit(1),
+    },
+    {
+      label: "brands",
+      run: () => supabase.from("brands").select("id").limit(1),
     },
   ] as const;
 

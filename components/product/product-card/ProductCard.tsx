@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ProductCornerRibbon } from "@/components/product/product-corner-ribbon/ProductCornerRibbon";
-import { colorSwatchStyles, getColorLabel } from "@/lib/cart";
+import { getColorLabel } from "@/lib/cart";
 import { formatSaleLabel } from "@/lib/pricing";
 import type { Product } from "@/lib/types";
 import { cn, formatPrice } from "@/lib/utils";
@@ -109,11 +109,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
                   key={color.id}
                   title={color.name}
                   aria-label={color.name}
-                  className={cn(
-                    "h-3.5 w-3.5 border border-outline-variant transition-[outline,transform] duration-200 hover:scale-110 hover:outline-1 hover:outline-offset-1 hover:outline-outline",
-                    !color.hex && colorSwatchStyles[color.id],
-                  )}
-                  style={color.hex ? { backgroundColor: color.hex } : undefined}
+                  className="h-3.5 w-3.5 border border-outline-variant transition-[outline,transform] duration-200 hover:scale-110 hover:outline-1 hover:outline-offset-1 hover:outline-outline"
+                  style={{ backgroundColor: color.hex || "#e5e5e5" }}
                 />
               ))}
             </div>

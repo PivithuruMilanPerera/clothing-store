@@ -7,7 +7,7 @@ import { useCart } from "@/components/cart";
 import { ChevronDownIcon, SearchIcon, XIcon } from "@/components/icons";
 import { ProductCornerRibbon } from "@/components/product/product-corner-ribbon/ProductCornerRibbon";
 import { Button } from "@/components/ui";
-import { colorSwatchStyles, getColorHex, getColorLabel } from "@/lib/cart";
+import { getColorHex, getColorLabel } from "@/lib/cart";
 import { formatSaleLabel } from "@/lib/pricing";
 import type { ProductDetail, ProductImage } from "@/lib/types";
 import { cn, formatPrice } from "@/lib/utils";
@@ -194,27 +194,23 @@ function getDefaultSize(sizes: string[]): string {
 function getImagesForColor(
   images: ProductImage[],
   colorId: string,
-  colorOptions: ProductDetail["colorOptions"],
 ): ProductImage[] {
   if (images.length === 0) {
     return images;
   }
 
-  const colorName = getColorLabel(colorId, colorOptions).trim().toLowerCase();
-  const hasTaggedImages = images.some((image) => Boolean(image.colorName));
+  const hasTaggedImages = images.some((image) => Boolean(image.colorId));
 
   if (!hasTaggedImages) {
     return images;
   }
 
-  const tagged = images.filter(
-    (image) => image.colorName?.trim().toLowerCase() === colorName,
-  );
+  const tagged = images.filter((image) => image.colorId === colorId);
   if (tagged.length > 0) {
     return tagged;
   }
 
-  const shared = images.filter((image) => !image.colorName);
+  const shared = images.filter((image) => !image.colorId);
   return shared.length > 0 ? shared : images;
 }
 
@@ -223,7 +219,7 @@ function getFallbackImageIndexForColor(
   colorId: string,
   colorIds: string[],
 ): number {
-  const hasTaggedImages = images.some((image) => Boolean(image.colorName));
+  const hasTaggedImages = images.some((image) => Boolean(image.colorId));
   if (hasTaggedImages) {
     return 0;
   }
@@ -250,11 +246,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
   const [sizeError, setSizeError] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
 
-  const galleryImages = getImagesForColor(
-    product.images,
-    selectedColor,
-    product.colorOptions,
-  );
+  const galleryImages = getImagesForColor(product.images, selectedColor);
   const activeImage = galleryImages[activeImageIndex] ?? galleryImages[0] ?? product.images[0];
   const saleLabel = formatSaleLabel(
     product.discountType,
@@ -291,6 +283,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
       image: activeImage?.src ?? product.images[0]?.src ?? "",
       price: product.price,
       color: selectedColor,
+      colorName: getColorLabel(selectedColor, product.colorOptions),
       size: selectedSize,
       quantity: Math.min(quantity, product.inventory),
     });
@@ -342,7 +335,6 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
           <div className="mt-3 flex gap-2">
             {product.colors.map((color) => {
               const isActive = color === selectedColor;
-              const swatchStyle = colorSwatchStyles[color];
               const hex = getColorHex(color, product.colorOptions);
 
               return (
@@ -352,10 +344,9 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
                   onClick={() => handleColorSelect(color)}
                   className={cn(
                     "h-8 w-8 border border-outline-variant transition-shadow",
-                    swatchStyle,
                     isActive && "ring-1 ring-primary ring-offset-2",
                   )}
-                  style={!swatchStyle && hex ? { backgroundColor: hex } : undefined}
+                  style={{ backgroundColor: hex ?? "#e5e5e5" }}
                   aria-label={getColorLabel(color, product.colorOptions)}
                   aria-pressed={isActive}
                 />

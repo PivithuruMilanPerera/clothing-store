@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductCategory, ShopProduct, SortOption } from "@/lib/types";
-import { colorLabels, colorSwatchStyles, getColorHex } from "@/lib/cart";
+import type { ShopFilterColor } from "@/lib/product-types";
 import { filterProducts, sortProducts } from "@/lib/shop";
 import { buildShopHref } from "@/lib/shop-url";
 import {
@@ -67,12 +67,6 @@ function getCategoryUrlSlug(
 
   return undefined;
 }
-
-type ShopFilterColor = {
-  id: string;
-  label: string;
-  hex: string;
-};
 
 type ShopFiltersProps = {
   brands: string[];
@@ -243,8 +237,6 @@ function ShopFilters({
           <div className="flex flex-wrap gap-2">
             {colors.map((color) => {
               const isActive = selectedColors.includes(color.id);
-              const swatchStyle = colorSwatchStyles[color.id];
-              const hex = getColorHex(color.id, [color]) ?? color.hex;
 
               return (
                 <button
@@ -253,11 +245,10 @@ function ShopFilters({
                   onClick={() => onColorToggle(color.id)}
                   className={cn(
                     "h-8 w-8 border border-outline-variant transition-shadow hover:scale-110",
-                    swatchStyle,
                     isActive && "ring-1 ring-primary ring-offset-2",
                   )}
-                  style={!swatchStyle ? { backgroundColor: hex } : undefined}
-                  aria-label={colorLabels[color.id] ?? color.label}
+                  style={{ backgroundColor: color.hex }}
+                  aria-label={color.label}
                   aria-pressed={isActive}
                 />
               );

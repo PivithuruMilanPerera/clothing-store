@@ -6,30 +6,158 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
+  createBrand,
+  createColor,
   createProduct,
+  createSize,
   deleteProduct,
+  fetchAllBrands,
+  fetchAllColors,
+  fetchAllSizes,
   repairProductsSchema,
   updateProduct,
 } from "@/app/admin/(dashboard)/products/actions";
 import { Button, Popup } from "@/components/ui";
 import { useAdminImageUploader } from "@/hooks/useAdminImageUploader";
 import type { CategoryTreeNode } from "@/lib/category-types";
+import { normalizeHexColor } from "@/lib/color-utils";
 import { flattenCategoryTreeOptions } from "@/lib/category-tree";
-import type { StoreProductWithRelations } from "@/lib/product-types";
+import type {
+  Brand,
+  Color,
+  Size,
+  StoreProductWithRelations,
+} from "@/lib/product-types";
 import type { ProductsSchemaStatus } from "@/lib/products-schema-types";
 import { computeFinalPrice } from "@/lib/pricing";
 import type { DiscountType } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 type ProductsAdminProps = {
   products: StoreProductWithRelations[];
   categoryTree: CategoryTreeNode[];
   schemaStatus: ProductsSchemaStatus;
+  allColors: Color[];
+  allSizes: Size[];
+  allBrands: Brand[];
 };
 
-type ImageEntry = { url: string; alt: string; colorName: string };
-type ColorEntry = { name: string; hex: string };
-type SizeEntry = { label: string };
+type ImageEntry = { url: string; alt: string; colorId: string };
+type ColorDraft = { name: string; hex: string };
+
+function resolveInitialBrand(
+  initialBrand: string | undefined,
+  allBrands: Brand[],
+): Brand | null {
+  if (initialBrand) {
+    const match = allBrands.find(
+      (brand) => brand.name.toLowerCase() === initialBrand.toLowerCase(),
+    );
+    if (match) {
+      return match;
+    }
+
+    return { id: `legacy-${initialBrand}`, name: initialBrand };
+  }
+
+  return (
+    allBrands.find((brand) => brand.name.toUpperCase() === "VELVORZ") ??
+    allBrands[0] ??
+    null
+  );
+}
+
+function NewColorForm({ onAdded }: { onAdded: (color: Color) => void }) {
+  const [draft, setDraft] = useState<ColorDraft>({ name: "", hex: "#000000" });
+  const [hexDraft, setHexDraft] = useState("#000000");
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateHex = (value: string) => {
+    setHexDraft(value);
+    const normalized = normalizeHexColor(value);
+    if (normalized) {
+      setDraft((current) => ({ ...current, hex: normalized }));
+    }
+  };
+
+  const handleHexBlur = () => {
+    const normalized = normalizeHexColor(hexDraft);
+    if (normalized) {
+      setHexDraft(normalized);
+      setDraft((current) => ({ ...current, hex: normalized }));
+      return;
+    }
+
+    setHexDraft(draft.hex);
+  };
+
+  const handleAdd = async () => {
+    setIsAdding(true);
+    setError(null);
+
+    const result = await createColor(draft.name, draft.hex);
+    if (result.error || !result.color) {
+      setError(result.error ?? "Unable to add color.");
+      setIsAdding(false);
+      return;
+    }
+
+    onAdded(result.color);
+    setDraft({ name: "", hex: "#000000" });
+    setHexDraft("#000000");
+    setIsAdding(false);
+  };
+
+  return (
+    <div className="space-y-2 border border-outline-variant p-3">
+      <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+        Add new color to catalog
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          value={draft.name}
+          onChange={(event) =>
+            setDraft((current) => ({ ...current, name: event.target.value }))
+          }
+          placeholder="Color name"
+          className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm"
+        />
+        <input
+          type="color"
+          value={normalizeHexColor(draft.hex) ?? "#000000"}
+          onChange={(event) => {
+            const nextHex = event.target.value.toLowerCase();
+            setHexDraft(nextHex);
+            setDraft((current) => ({ ...current, hex: nextHex }));
+          }}
+          className="h-10 w-12 cursor-pointer border border-outline-variant"
+          aria-label="Pick new color"
+        />
+        <input
+          type="text"
+          value={hexDraft}
+          onChange={(event) => updateHex(event.target.value)}
+          onBlur={handleHexBlur}
+          placeholder="#000000"
+          spellCheck={false}
+          className="font-body w-28 border border-outline-variant px-3 py-2 font-mono text-sm uppercase"
+          aria-label="Hex code for new color"
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={isAdding || !draft.name.trim()}
+          className="font-label border border-primary bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-primary disabled:opacity-60"
+        >
+          {isAdding ? "Adding..." : "Add"}
+        </button>
+      </div>
+      {error ? <p className="font-body text-sm text-error">{error}</p> : null}
+    </div>
+  );
+}
 
 function ProductImagesEditor({
   images,
@@ -37,13 +165,13 @@ function ProductImagesEditor({
   onChange,
 }: {
   images: ImageEntry[];
-  colors: ColorEntry[];
+  colors: Color[];
   onChange: (images: ImageEntry[]) => void;
 }) {
   const { inputRef, uploadError, isUploading, openFilePicker, onFileChange } =
     useAdminImageUploader({
       onUploaded: (url) =>
-        onChange([...images, { url, alt: "", colorName: colors[0]?.name ?? "" }]),
+        onChange([...images, { url, alt: "", colorId: colors[0]?.id ?? "" }]),
     });
 
   const moveImage = (index: number, direction: -1 | 1) => {
@@ -118,23 +246,21 @@ function ProductImagesEditor({
               </div>
             </div>
             <select
-              value={image.colorName}
+              value={image.colorId}
               onChange={(event) => {
                 const next = [...images];
-                next[index] = { ...next[index], colorName: event.target.value };
+                next[index] = { ...next[index], colorId: event.target.value };
                 onChange(next);
               }}
               className="font-body w-full border border-outline-variant px-1.5 py-1 text-[11px]"
               aria-label={`Color for image ${index + 1}`}
             >
               <option value="">All colors</option>
-              {colors
-                .filter((color) => color.name.trim())
-                .map((color) => (
-                  <option key={`${color.name}-${color.hex}`} value={color.name}>
-                    {color.name}
-                  </option>
-                ))}
+              {colors.map((color) => (
+                <option key={color.id} value={color.id}>
+                  {color.name}
+                </option>
+              ))}
             </select>
           </div>
         ))}
@@ -157,51 +283,84 @@ function ProductImagesEditor({
 function ProductColorsEditor({
   colors,
   onChange,
+  initialAllColors,
 }: {
-  colors: ColorEntry[];
-  onChange: (colors: ColorEntry[]) => void;
+  colors: Color[];
+  onChange: (colors: Color[]) => void;
+  initialAllColors: Color[];
 }) {
+  const [allColors, setAllColors] = useState(initialAllColors);
+  const selectedIds = new Set(colors.map((color) => color.id));
+
+  useEffect(() => {
+    setAllColors(initialAllColors);
+  }, [initialAllColors]);
+
+  const toggleColor = (color: Color) => {
+    if (selectedIds.has(color.id)) {
+      onChange(colors.filter((entry) => entry.id !== color.id));
+      return;
+    }
+
+    onChange([...colors, color]);
+  };
+
+  const handleColorAdded = async (color: Color) => {
+    const refreshed = await fetchAllColors();
+    setAllColors(refreshed);
+
+    if (!colors.some((entry) => entry.id === color.id)) {
+      onChange([...colors, color]);
+    }
+  };
+
   return (
-    <div className="space-y-3">
-      {colors.map((color, index) => (
-        <div key={index} className="flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            value={color.name}
-            onChange={(event) => {
-              const next = [...colors];
-              next[index] = { ...next[index], name: event.target.value };
-              onChange(next);
-            }}
-            placeholder="Color name"
-            className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm"
-          />
-          <input
-            type="color"
-            value={color.hex}
-            onChange={(event) => {
-              const next = [...colors];
-              next[index] = { ...next[index], hex: event.target.value };
-              onChange(next);
-            }}
-            className="h-10 w-12 cursor-pointer border border-outline-variant"
-          />
-          <button
-            type="button"
-            onClick={() => onChange(colors.filter((_, i) => i !== index))}
-            className="font-label border border-error px-2 py-2 text-[10px] font-bold uppercase text-error"
-          >
-            Remove
-          </button>
+    <div className="space-y-4">
+      {allColors.length > 0 ? (
+        <div>
+          <p className="font-body mb-2 text-xs leading-normal text-on-surface-variant">
+            Select colors for this product.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {allColors.map((color) => {
+              const isSelected = selectedIds.has(color.id);
+
+              return (
+                <button
+                  key={color.id}
+                  type="button"
+                  onClick={() => toggleColor(color)}
+                  className={cn(
+                    "flex items-center gap-2 border px-3 py-2 transition-colors",
+                    isSelected
+                      ? "border-primary bg-primary/10"
+                      : "border-outline-variant bg-surface-container-lowest hover:border-primary",
+                  )}
+                  aria-pressed={isSelected}
+                >
+                  <span
+                    className="h-5 w-5 shrink-0 border border-outline-variant"
+                    style={{ backgroundColor: color.hex }}
+                    aria-hidden="true"
+                  />
+                  <span className="font-body text-sm text-on-surface">
+                    {color.name}
+                  </span>
+                  <span className="font-mono text-[11px] uppercase text-on-surface-variant">
+                    {color.hex}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      ))}
-      <button
-        type="button"
-        onClick={() => onChange([...colors, { name: "", hex: "#000000" }])}
-        className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface"
-      >
-        Add Color
-      </button>
+      ) : (
+        <p className="font-body text-xs leading-normal text-on-surface-variant">
+          No colors yet. Add the first one below.
+        </p>
+      )}
+
+      <NewColorForm onAdded={handleColorAdded} />
     </div>
   );
 }
@@ -209,52 +368,237 @@ function ProductColorsEditor({
 function ProductSizesEditor({
   sizes,
   onChange,
+  initialAllSizes,
 }: {
-  sizes: SizeEntry[];
-  onChange: (sizes: SizeEntry[]) => void;
+  sizes: Size[];
+  onChange: (sizes: Size[]) => void;
+  initialAllSizes: Size[];
 }) {
+  const [allSizes, setAllSizes] = useState(initialAllSizes);
+  const [newSizeLabel, setNewSizeLabel] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const selectedIds = new Set(sizes.map((size) => size.id));
+
+  useEffect(() => {
+    setAllSizes(initialAllSizes);
+  }, [initialAllSizes]);
+
+  const toggleSize = (size: Size) => {
+    if (selectedIds.has(size.id)) {
+      onChange(sizes.filter((entry) => entry.id !== size.id));
+      return;
+    }
+
+    onChange([...sizes, size]);
+  };
+
+  const handleAddSize = async () => {
+    setIsAdding(true);
+    setError(null);
+
+    const result = await createSize(newSizeLabel);
+    if (result.error || !result.size) {
+      setError(result.error ?? "Unable to add size.");
+      setIsAdding(false);
+      return;
+    }
+
+    const refreshed = await fetchAllSizes();
+    setAllSizes(refreshed);
+
+    if (!sizes.some((entry) => entry.id === result.size!.id)) {
+      onChange([...sizes, result.size!]);
+    }
+
+    setNewSizeLabel("");
+    setIsAdding(false);
+  };
+
   return (
-    <div className="space-y-3">
-      {sizes.map((size, index) => (
-        <div key={index} className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      {allSizes.length > 0 ? (
+        <div>
+          <p className="font-body mb-2 text-xs leading-normal text-on-surface-variant">
+            Select sizes for this product.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {allSizes.map((size) => {
+              const isSelected = selectedIds.has(size.id);
+
+              return (
+                <button
+                  key={size.id}
+                  type="button"
+                  onClick={() => toggleSize(size)}
+                  className={cn(
+                    "font-label min-w-12 border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.15em] leading-none transition-colors",
+                    isSelected
+                      ? "border-primary bg-primary text-on-primary"
+                      : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary",
+                  )}
+                  aria-pressed={isSelected}
+                >
+                  {size.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="font-body text-xs leading-normal text-on-surface-variant">
+          No sizes yet. Add the first one below.
+        </p>
+      )}
+
+      <div className="space-y-2 border border-outline-variant p-3">
+        <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+          Add new size
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="text"
-            value={size.label}
-            onChange={(event) => {
-              const next = [...sizes];
-              next[index] = { label: event.target.value.toUpperCase() };
-              onChange(next);
-            }}
+            value={newSizeLabel}
+            onChange={(event) => setNewSizeLabel(event.target.value.toUpperCase())}
             placeholder="e.g. XL"
             className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm uppercase"
           />
           <button
             type="button"
-            onClick={() => onChange(sizes.filter((_, i) => i !== index))}
-            className="font-label border border-error px-2 py-2 text-[10px] font-bold uppercase text-error"
+            onClick={handleAddSize}
+            disabled={isAdding || !newSizeLabel.trim()}
+            className="font-label border border-primary bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-primary disabled:opacity-60"
           >
-            Remove
+            {isAdding ? "Adding..." : "Add"}
           </button>
         </div>
-      ))}
-      <button
-        type="button"
-        onClick={() => onChange([...sizes, { label: "" }])}
-        className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface"
-      >
-        Add Size
-      </button>
+        {error ? <p className="font-body text-sm text-error">{error}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function ProductBrandsEditor({
+  selectedBrand,
+  onChange,
+  initialAllBrands,
+}: {
+  selectedBrand: Brand | null;
+  onChange: (brand: Brand) => void;
+  initialAllBrands: Brand[];
+}) {
+  const [allBrands, setAllBrands] = useState(initialAllBrands);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAllBrands(initialAllBrands);
+  }, [initialAllBrands]);
+
+  const displayBrands =
+    selectedBrand &&
+    !allBrands.some(
+      (brand) => brand.name.toLowerCase() === selectedBrand.name.toLowerCase(),
+    )
+      ? [...allBrands, selectedBrand]
+      : allBrands;
+
+  const handleAddBrand = async () => {
+    setIsAdding(true);
+    setError(null);
+
+    const result = await createBrand(newBrandName);
+    if (result.error || !result.brand) {
+      setError(result.error ?? "Unable to add brand.");
+      setIsAdding(false);
+      return;
+    }
+
+    const refreshed = await fetchAllBrands();
+    setAllBrands(refreshed);
+    onChange(result.brand);
+    setNewBrandName("");
+    setIsAdding(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      {displayBrands.length > 0 ? (
+        <div>
+          <p className="font-body mb-2 text-xs leading-normal text-on-surface-variant">
+            Select a brand for this product.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {displayBrands.map((brand) => {
+              const isSelected =
+                selectedBrand?.name.toLowerCase() === brand.name.toLowerCase();
+
+              return (
+                <button
+                  key={brand.id}
+                  type="button"
+                  onClick={() => onChange(brand)}
+                  className={cn(
+                    "font-label border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.15em] leading-none transition-colors",
+                    isSelected
+                      ? "border-primary bg-primary text-on-primary"
+                      : "border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary",
+                  )}
+                  aria-pressed={isSelected}
+                >
+                  {brand.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="font-body text-xs leading-normal text-on-surface-variant">
+          No brands yet. Add the first one below.
+        </p>
+      )}
+
+      <div className="space-y-2 border border-outline-variant p-3">
+        <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+          Add new brand
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={newBrandName}
+            onChange={(event) => setNewBrandName(event.target.value)}
+            placeholder="e.g. VELVORZ"
+            className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleAddBrand}
+            disabled={isAdding || !newBrandName.trim()}
+            className="font-label border border-primary bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-primary disabled:opacity-60"
+          >
+            {isAdding ? "Adding..." : "Add"}
+          </button>
+        </div>
+        {error ? <p className="font-body text-sm text-error">{error}</p> : null}
+      </div>
     </div>
   );
 }
 
 export function ProductForm({
   categoryTree,
+  allColors,
+  allSizes,
+  allBrands,
   initial,
   onCancel,
   redirectOnSuccess,
 }: {
   categoryTree: CategoryTreeNode[];
+  allColors: Color[];
+  allSizes: Size[];
+  allBrands: Brand[];
   initial?: StoreProductWithRelations;
   onCancel?: () => void;
   redirectOnSuccess?: string;
@@ -266,20 +610,17 @@ export function ProductForm({
     initial?.images.map((image) => ({
       url: image.url,
       alt: image.alt,
-      colorName: image.color_name ?? "",
+      colorId: image.color_id ?? "",
     })) ?? [],
   );
-  const [colors, setColors] = useState<ColorEntry[]>(
-    initial?.colors.map((color) => ({ name: color.name, hex: color.hex })) ??
-      [{ name: "Black", hex: "#000000" }],
+  const [colors, setColors] = useState<Color[]>(
+    initial?.colors.map((entry) => entry.color) ?? [],
   );
-  const [sizes, setSizes] = useState<SizeEntry[]>(
-    initial?.sizes.map((size) => ({ label: size.label })) ?? [
-      { label: "S" },
-      { label: "M" },
-      { label: "L" },
-      { label: "XL" },
-    ],
+  const [sizes, setSizes] = useState<Size[]>(
+    initial?.sizes.map((entry) => entry.size) ?? [],
+  );
+  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(() =>
+    resolveInitialBrand(initial?.brand, allBrands),
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState(
     initial?.category_id ?? "",
@@ -302,27 +643,27 @@ export function ProductForm({
       }
 
       setImages([]);
-      setColors([{ name: "Black", hex: "#000000" }]);
-      setSizes([
-        { label: "S" },
-        { label: "M" },
-        { label: "L" },
-        { label: "XL" },
-      ]);
+      setColors([]);
+      setSizes([]);
+      setSelectedBrand(
+        allBrands.find((brand) => brand.name.toUpperCase() === "VELVORZ") ??
+          allBrands[0] ??
+          null,
+      );
       setSelectedCategoryId("");
       setDiscountType("none");
       setPaymentMethods({ card: true, cashOnDelivery: true });
       setInventory(0);
     }
-  }, [initial, redirectOnSuccess, router, state?.success]);
+  }, [allBrands, initial, redirectOnSuccess, router, state?.success]);
 
   return (
     <form action={formAction} className="space-y-4">
       {initial ? <input type="hidden" name="id" value={initial.id} /> : null}
       <input type="hidden" name="category_id" value={selectedCategoryId} />
       <input type="hidden" name="images_json" value={JSON.stringify(images)} />
-      <input type="hidden" name="colors_json" value={JSON.stringify(colors)} />
-      <input type="hidden" name="sizes_json" value={JSON.stringify(sizes)} />
+      <input type="hidden" name="colors_json" value={JSON.stringify(colors.map((color) => ({ id: color.id })))} />
+      <input type="hidden" name="sizes_json" value={JSON.stringify(sizes.map((size) => ({ id: size.id })))} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
@@ -336,15 +677,16 @@ export function ProductForm({
             className="font-body w-full border border-outline-variant px-3 py-2 text-sm"
           />
         </div>
-        <div>
+        <div className="md:col-span-2">
           <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
             Brand
           </label>
-          <input
-            name="brand"
-            defaultValue={initial?.brand ?? "VELVORZ"}
-            className="font-body w-full border border-outline-variant px-3 py-2 text-sm"
+          <ProductBrandsEditor
+            selectedBrand={selectedBrand}
+            initialAllBrands={allBrands}
+            onChange={setSelectedBrand}
           />
+          <input type="hidden" name="brand" value={selectedBrand?.name ?? ""} />
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
@@ -427,14 +769,22 @@ export function ProductForm({
         <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
           Colors
         </label>
-        <ProductColorsEditor colors={colors} onChange={setColors} />
+        <ProductColorsEditor
+          colors={colors}
+          initialAllColors={allColors}
+          onChange={setColors}
+        />
       </div>
 
       <div>
         <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
           Sizes
         </label>
-        <ProductSizesEditor sizes={sizes} onChange={setSizes} />
+        <ProductSizesEditor
+          sizes={sizes}
+          initialAllSizes={allSizes}
+          onChange={setSizes}
+        />
       </div>
 
       <div>
@@ -589,9 +939,15 @@ export function ProductForm({
 function ProductRow({
   product,
   categoryTree,
+  allColors,
+  allSizes,
+  allBrands,
 }: {
   product: StoreProductWithRelations;
   categoryTree: CategoryTreeNode[];
+  allColors: Color[];
+  allSizes: Size[];
+  allBrands: Brand[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -717,6 +1073,9 @@ function ProductRow({
         <div className="mt-4 border-t border-outline-variant pt-4">
           <ProductForm
             categoryTree={categoryTree}
+            allColors={allColors}
+            allSizes={allSizes}
+            allBrands={allBrands}
             initial={product}
             onCancel={() => setIsEditing(false)}
           />
@@ -771,6 +1130,9 @@ export function ProductsAdmin({
   products,
   categoryTree,
   schemaStatus,
+  allColors,
+  allSizes,
+  allBrands,
 }: ProductsAdminProps) {
   return (
     <div className="space-y-6">
@@ -810,6 +1172,9 @@ export function ProductsAdmin({
                 key={product.id}
                 product={product}
                 categoryTree={categoryTree}
+                allColors={allColors}
+                allSizes={allSizes}
+                allBrands={allBrands}
               />
             ))}
           </ul>

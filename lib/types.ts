@@ -38,7 +38,7 @@ export type ShopProduct = Product & {
 export type ProductImage = {
   src: string;
   alt: string;
-  colorName?: string;
+  colorId?: string;
 };
 
 export type ProductDetail = ShopProduct & {
@@ -56,6 +56,7 @@ export type CartItem = {
   image: string;
   price: number;
   color: ProductColor;
+  colorName?: string;
   size: ProductSize;
   quantity: number;
 };

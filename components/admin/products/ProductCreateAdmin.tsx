@@ -3,17 +3,24 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CategoryTreeNode } from "@/lib/category-types";
+import type { Brand, Color, Size } from "@/lib/product-types";
 import type { ProductsSchemaStatus } from "@/lib/products-schema-types";
 import { ProductForm } from "./ProductsAdmin";
 
 type ProductCreateAdminProps = {
   categoryTree: CategoryTreeNode[];
   schemaStatus: ProductsSchemaStatus;
+  allColors: Color[];
+  allSizes: Size[];
+  allBrands: Brand[];
 };
 
 export function ProductCreateAdmin({
   categoryTree,
   schemaStatus,
+  allColors,
+  allSizes,
+  allBrands,
 }: ProductCreateAdminProps) {
   const router = useRouter();
   if (!schemaStatus.ready) {
@@ -62,6 +69,9 @@ export function ProductCreateAdmin({
       <section className="rounded-sm border border-outline-variant bg-surface-container-lowest p-5 md:p-6">
         <ProductForm
           categoryTree={categoryTree}
+          allColors={allColors}
+          allSizes={allSizes}
+          allBrands={allBrands}
           redirectOnSuccess="/admin/products"
           onCancel={() => router.push("/admin/products")}
         />

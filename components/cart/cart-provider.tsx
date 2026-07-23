@@ -24,6 +24,7 @@ type AddCartItemInput = {
   image: string;
   price: number;
   color: ProductColor;
+  colorName?: string;
   size: ProductSize;
   quantity?: number;
 };
@@ -82,6 +83,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           image: item.image,
           price: item.price,
           color: item.color,
+          colorName: item.colorName,
           size: item.size,
           quantity,
         },

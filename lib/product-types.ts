@@ -1,16 +1,33 @@
+export type Color = {
+  id: string;
+  name: string;
+  hex: string;
+};
+
+export type Brand = {
+  id: string;
+  name: string;
+};
+
+export type Size = {
+  id: string;
+  label: string;
+};
+
 export type StoreProductSize = {
   id: string;
   product_id: string;
-  label: string;
+  size_id: string;
   sort_order: number;
+  size: Size;
 };
 
 export type StoreProductColor = {
   id: string;
   product_id: string;
-  name: string;
-  hex: string;
+  color_id: string;
   sort_order: number;
+  color: Color;
 };
 
 export type StoreProductImage = {
@@ -18,8 +35,9 @@ export type StoreProductImage = {
   product_id: string;
   url: string;
   alt: string;
-  color_name: string | null;
+  color_id: string | null;
   sort_order: number;
+  color?: Color | null;
 };
 
 export type StoreProduct = {
