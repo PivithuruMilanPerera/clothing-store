@@ -11,8 +11,10 @@ import type {
   StoreProductColor,
   StoreProductImage,
   StoreProductSize,
+  StoreProductVariant,
   StoreProductWithRelations,
 } from "@/lib/product-types";
+import { getProductStockState } from "@/lib/inventory";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductDetail, ProductImage, ShopProduct } from "@/lib/types";
 import { computeFinalPrice } from "@/lib/pricing";
@@ -52,6 +54,16 @@ type ProductImageRow = {
   colors: Color | Color[] | null;
 };
 
+type ProductVariantRow = {
+  id: string;
+  product_id: string;
+  color_id: string;
+  size_id: string;
+  inventory: number;
+  colors: Color | Color[] | null;
+  sizes: Size | Size[] | null;
+};
+
 type ProductRow = StoreProduct & {
   categories:
     | {
@@ -70,6 +82,7 @@ type ProductRow = StoreProduct & {
   product_images: ProductImageRow[];
   product_colors: ProductColorRow[];
   product_sizes: ProductSizeRow[];
+  product_variants: ProductVariantRow[];
 };
 
 function normalizeRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -117,6 +130,32 @@ function mapProductSizeRow(row: ProductSizeRow): StoreProductSize | null {
   };
 }
 
+function mapProductVariantRow(row: ProductVariantRow): StoreProductVariant {
+  const color = normalizeRelation(row.colors);
+  const size = normalizeRelation(row.sizes);
+
+  return {
+    id: row.id,
+    product_id: row.product_id,
+    color_id: row.color_id,
+    size_id: row.size_id,
+    inventory: Number(row.inventory ?? 0),
+    color: color
+      ? {
+          id: color.id,
+          name: color.name,
+          hex: color.hex,
+        }
+      : undefined,
+    size: size
+      ? {
+          id: size.id,
+          label: size.label,
+        }
+      : undefined,
+  };
+}
+
 function mapProductImageRow(row: ProductImageRow): StoreProductImage {
   const color = normalizeRelation(row.colors);
 
@@ -158,6 +197,22 @@ function mapProductRow(row: ProductRow): StoreProductWithRelations {
     .filter((color): color is StoreProductColor => color !== null)
     .sort((a, b) => a.sort_order - b.sort_order);
 
+  const variants = (row.product_variants ?? [])
+    .map(mapProductVariantRow)
+    .sort((a, b) => {
+      const colorOrder =
+        colors.findIndex((color) => color.color_id === a.color_id) -
+        colors.findIndex((color) => color.color_id === b.color_id);
+      if (colorOrder !== 0) {
+        return colorOrder;
+      }
+
+      return (
+        sizes.findIndex((size) => size.size_id === a.size_id) -
+        sizes.findIndex((size) => size.size_id === b.size_id)
+      );
+    });
+
   return {
     id: row.id,
     category_id: row.category_id,
@@ -184,6 +239,7 @@ function mapProductRow(row: ProductRow): StoreProductWithRelations {
       .sort((a, b) => a.sort_order - b.sort_order),
     colors,
     sizes,
+    variants,
     category: normalizeCategory(row.categories),
   };
 }
@@ -236,6 +292,7 @@ export function toShopProduct(
   const discountType = product.discount_type;
   const discountValue = Number(product.discount_value ?? 0);
   const computedPricing = computeFinalPrice(basePrice, discountType, discountValue);
+  const stockState = getProductStockState(product.variants ?? []);
 
   return {
     id: product.id,
@@ -246,7 +303,8 @@ export function toShopProduct(
     discountType,
     discountValue,
     discountAmount: computedPricing.discountAmount,
-    inventory: Number(product.inventory ?? 0),
+    inventory: stockState.totalInventory,
+    isLowStock: stockState.isLowStock,
     image: primaryImage,
     href: `/products/${product.slug}`,
     badge: product.badge ?? undefined,
@@ -283,6 +341,12 @@ export function toProductDetail(
     images,
     materialsCare: product.materials_care || DEFAULT_MATERIALS_CARE,
     shippingReturns: product.shipping_returns || DEFAULT_SHIPPING_RETURNS,
+    variantInventory: (product.variants ?? []).map((variant) => ({
+      colorId: variant.color_id,
+      sizeId: variant.size_id,
+      sizeLabel: variant.size?.label ?? "",
+      inventory: variant.inventory,
+    })),
   };
 }
 
@@ -307,7 +371,8 @@ const PRODUCT_SELECT = `
   categories ( id, name, slug, parent_id ),
   product_images ( id, product_id, url, alt, color_id, sort_order, colors ( id, name, hex ) ),
   product_colors ( id, product_id, color_id, sort_order, colors ( id, name, hex ) ),
-  product_sizes ( id, product_id, size_id, sort_order, sizes ( id, label ) )
+  product_sizes ( id, product_id, size_id, sort_order, sizes ( id, label ) ),
+  product_variants ( id, product_id, color_id, size_id, inventory, colors ( id, name, hex ), sizes ( id, label ) )
 `;
 
 export async function getPublishedProducts(): Promise<StoreProductWithRelations[]> {

@@ -40,6 +40,23 @@ export type StoreProductImage = {
   color?: Color | null;
 };
 
+export type StoreProductVariant = {
+  id: string;
+  product_id: string;
+  color_id: string;
+  size_id: string;
+  inventory: number;
+  color?: Color;
+  size?: Size;
+};
+
+export type ProductVariantStock = {
+  colorId: string;
+  sizeId: string;
+  sizeLabel: string;
+  inventory: number;
+};
+
 export type StoreProduct = {
   id: string;
   category_id: string;
@@ -64,6 +81,7 @@ export type StoreProductWithRelations = StoreProduct & {
   images: StoreProductImage[];
   colors: StoreProductColor[];
   sizes: StoreProductSize[];
+  variants: StoreProductVariant[];
   category?: {
     id: string;
     name: string;

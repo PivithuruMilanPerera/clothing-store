@@ -28,25 +28,89 @@ function getCategorySelectionState(
   };
 }
 
-function flattenSubCategories(
+function getActiveMainCategorySlugs(
+  categories: ShopCategoryFilterNode[],
+  selectedCategories: ProductCategory[],
+): ProductCategory[] {
+  return categories
+    .filter((category) => {
+      const slugs = getCategoryToggleSlugs(category);
+      const { allSelected, someSelected } = getCategorySelectionState(
+        slugs,
+        selectedCategories,
+      );
+
+      return allSelected || someSelected;
+    })
+    .map((category) => category.id as ProductCategory);
+}
+
+type SubCategoryFilterItem = {
+  category: ShopCategoryFilterNode;
+  depth: number;
+};
+
+function getVisibleSubCategories(
   nodes: ShopCategoryFilterNode[],
   selectedMainSlugs: ProductCategory[],
-): ShopCategoryFilterNode[] {
-  const showAll = selectedMainSlugs.length === 0;
+): SubCategoryFilterItem[] {
+  if (selectedMainSlugs.length === 0) {
+    return [];
+  }
 
-  return nodes.flatMap((node) => {
-    const includeChildren =
-      showAll || selectedMainSlugs.includes(node.id as ProductCategory);
+  const items: SubCategoryFilterItem[] = [];
 
-    if (!includeChildren) {
-      return [];
+  for (const main of nodes) {
+    if (!selectedMainSlugs.includes(main.id as ProductCategory)) {
+      continue;
     }
 
-    return node.children.flatMap((child) => [
-      child,
-      ...child.children,
-    ]);
-  });
+    for (const child of main.children) {
+      items.push({ category: child, depth: 0 });
+
+      for (const nested of child.children) {
+        items.push({ category: nested, depth: 1 });
+      }
+    }
+  }
+
+  return items;
+}
+
+function ensureParentSubCategoriesSelected(
+  categories: ShopCategoryFilterNode[],
+  selectedCategories: ProductCategory[],
+): ProductCategory[] {
+  const next = new Set(selectedCategories);
+
+  for (const main of categories) {
+    for (const child of main.children) {
+      const hasNestedSelected = child.children.some((nested) =>
+        next.has(nested.id as ProductCategory),
+      );
+
+      if (hasNestedSelected) {
+        next.add(child.id as ProductCategory);
+      }
+    }
+  }
+
+  return [...next];
+}
+
+function findParentSubCategory(
+  categories: ShopCategoryFilterNode[],
+  categoryId: ProductCategory,
+): ShopCategoryFilterNode | null {
+  for (const main of categories) {
+    for (const child of main.children) {
+      if (child.children.some((nested) => nested.id === categoryId)) {
+        return child;
+      }
+    }
+  }
+
+  return null;
 }
 
 function getCategoryUrlSlug(
@@ -105,14 +169,12 @@ function ShopFilters({
   onColorToggle,
   onMaxPriceChange,
 }: ShopFiltersProps) {
-  const selectedMainSlugs = categories
-    .filter((category) => {
-      const slugs = getCategoryToggleSlugs(category);
-      return getCategorySelectionState(slugs, selectedCategories).allSelected;
-    })
-    .map((category) => category.id as ProductCategory);
+  const selectedMainSlugs = getActiveMainCategorySlugs(
+    categories,
+    selectedCategories,
+  );
 
-  const subCategories = flattenSubCategories(categories, selectedMainSlugs);
+  const subCategories = getVisibleSubCategories(categories, selectedMainSlugs);
 
   return (
     <aside className="space-y-8">
@@ -154,19 +216,33 @@ function ShopFilters({
       {subCategories.length > 0 ? (
         <FilterSection title="Sub-Category">
           <ul className="space-y-3">
-            {subCategories.map((category) => {
+            {subCategories.map(({ category, depth }) => {
               const slugs = getCategoryToggleSlugs(category);
-              const { allSelected } = getCategorySelectionState(
+              const { allSelected, someSelected } = getCategorySelectionState(
                 slugs,
                 selectedCategories,
               );
+              const hasChildren = category.children.length > 0;
+              const isChecked = hasChildren
+                ? allSelected || someSelected
+                : allSelected;
 
               return (
                 <li key={category.id}>
-                  <label className="flex cursor-pointer items-center gap-3">
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3",
+                      depth > 0 && "pl-6",
+                    )}
+                  >
                     <input
+                      ref={(input) => {
+                        if (input && hasChildren) {
+                          input.indeterminate = someSelected && !allSelected;
+                        }
+                      }}
                       type="checkbox"
-                      checked={allSelected}
+                      checked={isChecked}
                       onChange={() => onSubCategoryToggle(category)}
                       className="h-4 w-4 accent-primary"
                     />
@@ -350,13 +426,21 @@ export function ShopContent({
   const [sort, setSort] = useState<SortOption>("newest");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const skipUrlSyncRef = useRef(false);
+  const skipPropsSyncRef = useRef(false);
 
   const defaultCategoryKey = defaultCategorySlugs.join("|");
 
   useEffect(() => {
+    if (skipPropsSyncRef.current) {
+      skipPropsSyncRef.current = false;
+      return;
+    }
+
     skipUrlSyncRef.current = true;
     setQuery(defaultQuery);
-    setSelectedCategories(defaultCategorySlugs);
+    setSelectedCategories(
+      ensureParentSubCategoriesSelected(categories, defaultCategorySlugs),
+    );
     setSelectedBrands(defaultBrand ? [defaultBrand] : []);
     // defaultCategoryKey tracks the slug list; avoid resetting on new array identity
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed
@@ -385,6 +469,7 @@ export function ShopContent({
     const currentHref = `${window.location.pathname}${window.location.search}`;
 
     if (currentHref !== nextHref) {
+      skipPropsSyncRef.current = true;
       router.replace(nextHref, { scroll: false });
     }
   }, [query, categoryUrlSlug, selectedBrands, router]);
@@ -419,12 +504,36 @@ export function ShopContent({
       slugs,
       selectedCategories,
     );
+    const categorySlug = category.id as ProductCategory;
+    const parentSubCategory = findParentSubCategory(categories, categorySlug);
 
-    setSelectedCategories((prev) =>
-      allSelected
-        ? prev.filter((slug) => !slugs.includes(slug))
-        : [...new Set([...prev, ...slugs])],
-    );
+    setSelectedCategories((prev) => {
+      if (allSelected) {
+        let next = prev.filter((slug) => !slugs.includes(slug));
+
+        if (parentSubCategory) {
+          const hasSiblingSelected = parentSubCategory.children.some((nested) =>
+            next.includes(nested.id as ProductCategory),
+          );
+
+          if (!hasSiblingSelected) {
+            next = next.filter(
+              (slug) => slug !== (parentSubCategory.id as ProductCategory),
+            );
+          }
+        }
+
+        return next;
+      }
+
+      const next = new Set([...prev, ...slugs]);
+
+      if (parentSubCategory) {
+        next.add(parentSubCategory.id as ProductCategory);
+      }
+
+      return [...next];
+    });
   };
 
   const toggleBrand = (brand: string) => {
@@ -436,9 +545,7 @@ export function ShopContent({
   };
 
   const toggleSize = (size: string) => {
-    setSelectedSizes((prev) =>
-      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size],
-    );
+    setSelectedSizes((prev) => (prev.includes(size) ? [] : [size]));
   };
 
   const toggleColor = (color: string) => {

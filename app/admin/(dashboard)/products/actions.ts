@@ -54,6 +54,7 @@ export async function repairProductsSchema(
 type ImageInput = { url: string; alt?: string; colorId?: string };
 type ColorInput = { id: string };
 type SizeInput = { id: string };
+type VariantInput = { colorId: string; sizeId: string; inventory: number };
 
 type ProductWriteInput = {
   name: string;
@@ -182,6 +183,36 @@ function parseSizes(value: FormDataEntryValue | null): SizeInput[] {
   }
 }
 
+function parseVariants(value: FormDataEntryValue | null): VariantInput[] {
+  try {
+    const parsed = JSON.parse(String(value ?? "[]")) as VariantInput[];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter(
+            (variant) =>
+              typeof variant?.colorId === "string" &&
+              variant.colorId.trim() &&
+              typeof variant?.sizeId === "string" &&
+              variant.sizeId.trim(),
+          )
+          .map((variant) => ({
+            colorId: variant.colorId.trim(),
+            sizeId: variant.sizeId.trim(),
+            inventory: Math.max(
+              0,
+              Math.floor(Number(variant.inventory ?? 0) || 0),
+            ),
+          }))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function getTotalVariantInventory(variants: VariantInput[]): number {
+  return variants.reduce((sum, variant) => sum + variant.inventory, 0);
+}
+
 async function revalidateProductPaths(slug?: string) {
   revalidatePath("/");
   revalidatePath("/shop");
@@ -196,12 +227,14 @@ async function replaceProductRelations(
   images: ImageInput[],
   colors: ColorInput[],
   sizes: SizeInput[],
+  variants: VariantInput[],
 ) {
   const supabase = await createClient();
 
   await supabase.from("product_images").delete().eq("product_id", productId);
   await supabase.from("product_colors").delete().eq("product_id", productId);
   await supabase.from("product_sizes").delete().eq("product_id", productId);
+  await supabase.from("product_variants").delete().eq("product_id", productId);
 
   if (images.length > 0) {
     await supabase.from("product_images").insert(
@@ -234,6 +267,17 @@ async function replaceProductRelations(
       })),
     );
   }
+
+  if (variants.length > 0) {
+    await supabase.from("product_variants").insert(
+      variants.map((variant) => ({
+        product_id: productId,
+        color_id: variant.colorId,
+        size_id: variant.sizeId,
+        inventory: variant.inventory,
+      })),
+    );
+  }
 }
 
 export async function createProduct(
@@ -252,11 +296,12 @@ export async function createProduct(
   const materialsCare = String(formData.get("materials_care") ?? "").trim();
   const shippingReturns = String(formData.get("shipping_returns") ?? "").trim();
   const badge = String(formData.get("badge") ?? "").trim() || null;
-  const inventory = Number(formData.get("inventory") ?? 0);
   const isPublished = formData.get("is_published") === "on";
   const images = parseImages(formData.get("images_json"));
   const colors = parseColors(formData.get("colors_json"));
   const sizes = parseSizes(formData.get("sizes_json"));
+  const variants = parseVariants(formData.get("variants_json"));
+  const inventory = getTotalVariantInventory(variants);
 
   if (!name) return { error: "Product name is required." };
   if (!categoryId) return { error: "Category is required." };
@@ -275,9 +320,6 @@ export async function createProduct(
 
   if (discountType === "percentage" && discountValue > 100) {
     return { error: "Percentage discount cannot be greater than 100." };
-  }
-  if (!Number.isFinite(inventory) || inventory < 0) {
-    return { error: "Please enter a valid inventory quantity." };
   }
   if (images.length === 0) {
     return { error: "At least one product image is required." };
@@ -335,7 +377,7 @@ export async function createProduct(
     return { error: error?.message || "Unable to create product." };
   }
 
-  await replaceProductRelations(data.id, images, colors, sizes);
+  await replaceProductRelations(data.id, images, colors, sizes, variants);
   await revalidateProductPaths(slug);
 
   return { success: "Product created successfully." };
@@ -358,11 +400,12 @@ export async function updateProduct(
   const materialsCare = String(formData.get("materials_care") ?? "").trim();
   const shippingReturns = String(formData.get("shipping_returns") ?? "").trim();
   const badge = String(formData.get("badge") ?? "").trim() || null;
-  const inventory = Number(formData.get("inventory") ?? 0);
   const isPublished = formData.get("is_published") === "on";
   const images = parseImages(formData.get("images_json"));
   const colors = parseColors(formData.get("colors_json"));
   const sizes = parseSizes(formData.get("sizes_json"));
+  const variants = parseVariants(formData.get("variants_json"));
+  const inventory = getTotalVariantInventory(variants);
 
   if (!id) return { error: "Product id is required." };
   if (!name) return { error: "Product name is required." };
@@ -382,9 +425,6 @@ export async function updateProduct(
 
   if (discountType === "percentage" && discountValue > 100) {
     return { error: "Percentage discount cannot be greater than 100." };
-  }
-  if (!Number.isFinite(inventory) || inventory < 0) {
-    return { error: "Please enter a valid inventory quantity." };
   }
   if (images.length === 0) {
     return { error: "At least one product image is required." };
@@ -448,7 +488,7 @@ export async function updateProduct(
     return { error: error.message || "Unable to update product." };
   }
 
-  await replaceProductRelations(id, images, colors, sizes);
+  await replaceProductRelations(id, images, colors, sizes, variants);
   await revalidateProductPaths(existing.slug);
   await revalidateProductPaths(slug);
 

@@ -33,7 +33,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     brand: brandParam,
   } = await searchParams;
   const products = await getPublishedShopProducts();
-  const filterData = await getShopFilterData(products, { scope: "catalog" });
+  const filterData = await getShopFilterData(products);
 
   const categoryTree = await getCategoryTree();
   const categories = mapCategoryTreeToShopFilters(categoryTree);

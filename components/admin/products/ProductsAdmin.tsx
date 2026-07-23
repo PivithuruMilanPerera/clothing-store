@@ -44,6 +44,151 @@ type ProductsAdminProps = {
 
 type ImageEntry = { url: string; alt: string; colorId: string };
 type ColorDraft = { name: string; hex: string };
+type VariantEntry = { colorId: string; sizeId: string; inventory: number };
+
+function buildVariantGrid(
+  colors: Color[],
+  sizes: Size[],
+  existing: VariantEntry[],
+): VariantEntry[] {
+  const inventoryByKey = new Map(
+    existing.map((variant) => [
+      `${variant.colorId}:${variant.sizeId}`,
+      variant.inventory,
+    ]),
+  );
+
+  return colors.flatMap((color) =>
+    sizes.map((size) => ({
+      colorId: color.id,
+      sizeId: size.id,
+      inventory: inventoryByKey.get(`${color.id}:${size.id}`) ?? 0,
+    })),
+  );
+}
+
+function getVariantInventoryStatus(inventory: number) {
+  if (inventory <= 0) {
+    return { label: "Out", className: "text-error" };
+  }
+
+  if (inventory <= 10) {
+    return { label: "Low", className: "text-orange-400" };
+  }
+
+  return { label: "In stock", className: "text-on-surface-variant" };
+}
+
+function ProductVariantInventoryEditor({
+  colors,
+  sizes,
+  variants,
+  onChange,
+}: {
+  colors: Color[];
+  sizes: Size[];
+  variants: VariantEntry[];
+  onChange: (variants: VariantEntry[]) => void;
+}) {
+  if (colors.length === 0 || sizes.length === 0) {
+    return (
+      <p className="font-body text-sm text-on-surface-variant">
+        Add at least one color and one size to manage variant inventory.
+      </p>
+    );
+  }
+
+  const updateVariantInventory = (
+    colorId: string,
+    sizeId: string,
+    inventory: number,
+  ) => {
+    onChange(
+      variants.map((variant) =>
+        variant.colorId === colorId && variant.sizeId === sizeId
+          ? { ...variant, inventory }
+          : variant,
+      ),
+    );
+  };
+
+  return (
+    <div className="overflow-x-auto border border-outline-variant">
+      <table className="min-w-full border-collapse text-left">
+        <thead>
+          <tr className="border-b border-outline-variant bg-surface-container-low">
+            <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+              Color / Size
+            </th>
+            {sizes.map((size) => (
+              <th
+                key={size.id}
+                className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant"
+              >
+                {size.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {colors.map((color) => (
+            <tr key={color.id} className="border-b border-outline-variant last:border-b-0">
+              <td className="px-3 py-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-4 w-4 border border-outline-variant"
+                    style={{ backgroundColor: color.hex }}
+                  />
+                  <span className="font-body text-sm text-on-surface">
+                    {color.name}
+                  </span>
+                </div>
+              </td>
+              {sizes.map((size) => {
+                const variant = variants.find(
+                  (entry) =>
+                    entry.colorId === color.id && entry.sizeId === size.id,
+                );
+                const inventory = variant?.inventory ?? 0;
+                const status = getVariantInventoryStatus(inventory);
+
+                return (
+                  <td key={size.id} className="px-3 py-3 align-top">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={inventory}
+                      onChange={(event) =>
+                        updateVariantInventory(
+                          color.id,
+                          size.id,
+                          Math.max(
+                            0,
+                            Math.floor(Number(event.target.value) || 0),
+                          ),
+                        )
+                      }
+                      className="font-body w-20 border border-outline-variant px-2 py-1.5 text-sm"
+                    />
+                    <p
+                      className={cn(
+                        "font-body mt-1 text-[11px]",
+                        status.className,
+                      )}
+                    >
+                      {status.label}
+                    </p>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function resolveInitialBrand(
   initialBrand: string | undefined,
@@ -68,6 +213,7 @@ function resolveInitialBrand(
 }
 
 function NewColorForm({ onAdded }: { onAdded: (color: Color) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState<ColorDraft>({ name: "", hex: "#000000" });
   const [hexDraft, setHexDraft] = useState("#000000");
   const [isAdding, setIsAdding] = useState(false);
@@ -107,13 +253,38 @@ function NewColorForm({ onAdded }: { onAdded: (color: Color) => void }) {
     setDraft({ name: "", hex: "#000000" });
     setHexDraft("#000000");
     setIsAdding(false);
+    setIsOpen(false);
   };
+
+  if (!isOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface"
+      >
+        Add New Color
+      </button>
+    );
+  }
 
   return (
     <div className="space-y-2 border border-outline-variant p-3">
-      <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-        Add new color to catalog
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+          Add new color
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(false);
+            setError(null);
+          }}
+          className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant hover:text-on-surface"
+        >
+          Cancel
+        </button>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
@@ -356,7 +527,7 @@ function ProductColorsEditor({
         </div>
       ) : (
         <p className="font-body text-xs leading-normal text-on-surface-variant">
-          No colors yet. Add the first one below.
+          No colors yet. Click &quot;Add New Color&quot; to create one.
         </p>
       )}
 
@@ -375,6 +546,7 @@ function ProductSizesEditor({
   initialAllSizes: Size[];
 }) {
   const [allSizes, setAllSizes] = useState(initialAllSizes);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [newSizeLabel, setNewSizeLabel] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -413,6 +585,7 @@ function ProductSizesEditor({
 
     setNewSizeLabel("");
     setIsAdding(false);
+    setIsAddFormOpen(false);
   };
 
   return (
@@ -447,33 +620,55 @@ function ProductSizesEditor({
         </div>
       ) : (
         <p className="font-body text-xs leading-normal text-on-surface-variant">
-          No sizes yet. Add the first one below.
+          No sizes yet. Click &quot;Add New Size&quot; to create one.
         </p>
       )}
 
-      <div className="space-y-2 border border-outline-variant p-3">
-        <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-          Add new size
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            value={newSizeLabel}
-            onChange={(event) => setNewSizeLabel(event.target.value.toUpperCase())}
-            placeholder="e.g. XL"
-            className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm uppercase"
-          />
-          <button
-            type="button"
-            onClick={handleAddSize}
-            disabled={isAdding || !newSizeLabel.trim()}
-            className="font-label border border-primary bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-primary disabled:opacity-60"
-          >
-            {isAdding ? "Adding..." : "Add"}
-          </button>
+      {isAddFormOpen ? (
+        <div className="space-y-2 border border-outline-variant p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+              Add new size
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddFormOpen(false);
+                setError(null);
+              }}
+              className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant hover:text-on-surface"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={newSizeLabel}
+              onChange={(event) => setNewSizeLabel(event.target.value.toUpperCase())}
+              placeholder="e.g. XL"
+              className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm uppercase"
+            />
+            <button
+              type="button"
+              onClick={handleAddSize}
+              disabled={isAdding || !newSizeLabel.trim()}
+              className="font-label border border-primary bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-primary disabled:opacity-60"
+            >
+              {isAdding ? "Adding..." : "Add"}
+            </button>
+          </div>
+          {error ? <p className="font-body text-sm text-error">{error}</p> : null}
         </div>
-        {error ? <p className="font-body text-sm text-error">{error}</p> : null}
-      </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAddFormOpen(true)}
+          className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface"
+        >
+          Add New Size
+        </button>
+      )}
     </div>
   );
 }
@@ -488,6 +683,7 @@ function ProductBrandsEditor({
   initialAllBrands: Brand[];
 }) {
   const [allBrands, setAllBrands] = useState(initialAllBrands);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -520,6 +716,7 @@ function ProductBrandsEditor({
     onChange(result.brand);
     setNewBrandName("");
     setIsAdding(false);
+    setIsAddFormOpen(false);
   };
 
   return (
@@ -555,33 +752,55 @@ function ProductBrandsEditor({
         </div>
       ) : (
         <p className="font-body text-xs leading-normal text-on-surface-variant">
-          No brands yet. Add the first one below.
+          No brands yet. Click &quot;Add New Brand&quot; to create one.
         </p>
       )}
 
-      <div className="space-y-2 border border-outline-variant p-3">
-        <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-          Add new brand
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            value={newBrandName}
-            onChange={(event) => setNewBrandName(event.target.value)}
-            placeholder="e.g. VELVORZ"
-            className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={handleAddBrand}
-            disabled={isAdding || !newBrandName.trim()}
-            className="font-label border border-primary bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-primary disabled:opacity-60"
-          >
-            {isAdding ? "Adding..." : "Add"}
-          </button>
+      {isAddFormOpen ? (
+        <div className="space-y-2 border border-outline-variant p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+              Add new brand
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddFormOpen(false);
+                setError(null);
+              }}
+              className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant hover:text-on-surface"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={newBrandName}
+              onChange={(event) => setNewBrandName(event.target.value)}
+              placeholder="e.g. VELVORZ"
+              className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleAddBrand}
+              disabled={isAdding || !newBrandName.trim()}
+              className="font-label border border-primary bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-primary disabled:opacity-60"
+            >
+              {isAdding ? "Adding..." : "Add"}
+            </button>
+          </div>
+          {error ? <p className="font-body text-sm text-error">{error}</p> : null}
         </div>
-        {error ? <p className="font-body text-sm text-error">{error}</p> : null}
-      </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAddFormOpen(true)}
+          className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface"
+        >
+          Add New Brand
+        </button>
+      )}
     </div>
   );
 }
@@ -632,8 +851,20 @@ export function ProductForm({
     card: true,
     cashOnDelivery: true,
   });
-  const [inventory, setInventory] = useState(initial?.inventory ?? 0);
+  const [variants, setVariants] = useState<VariantEntry[]>(() =>
+    initial
+      ? initial.variants.map((variant) => ({
+          colorId: variant.color_id,
+          sizeId: variant.size_id,
+          inventory: variant.inventory,
+        }))
+      : [],
+  );
   const categoryOptions = flattenCategoryTreeOptions(categoryTree);
+
+  useEffect(() => {
+    setVariants((current) => buildVariantGrid(colors, sizes, current));
+  }, [colors, sizes]);
 
   useEffect(() => {
     if (state?.success && !initial) {
@@ -653,7 +884,7 @@ export function ProductForm({
       setSelectedCategoryId("");
       setDiscountType("none");
       setPaymentMethods({ card: true, cashOnDelivery: true });
-      setInventory(0);
+      setVariants([]);
     }
   }, [allBrands, initial, redirectOnSuccess, router, state?.success]);
 
@@ -664,6 +895,7 @@ export function ProductForm({
       <input type="hidden" name="images_json" value={JSON.stringify(images)} />
       <input type="hidden" name="colors_json" value={JSON.stringify(colors.map((color) => ({ id: color.id })))} />
       <input type="hidden" name="sizes_json" value={JSON.stringify(sizes.map((size) => ({ id: size.id })))} />
+      <input type="hidden" name="variants_json" value={JSON.stringify(variants)} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
@@ -742,27 +974,21 @@ export function ProductForm({
             <option value="fixed">Fixed Amount (Rs.)</option>
           </select>
         </div>
-        <div>
-          <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-            Discount Value
-          </label>
-          <input
-            name="discount_value"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue={initial?.discount_value ?? 0}
-            disabled={discountType === "none"}
-            className="font-body w-full border border-outline-variant px-3 py-2 text-sm disabled:opacity-60"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-          Product Images
-        </label>
-        <ProductImagesEditor images={images} colors={colors} onChange={setImages} />
+        {discountType !== "none" ? (
+          <div>
+            <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+              Discount Value
+            </label>
+            <input
+              name="discount_value"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={initial?.discount_value ?? 0}
+              className="font-body w-full border border-outline-variant px-3 py-2 text-sm"
+            />
+          </div>
+        ) : null}
       </div>
 
       <div>
@@ -785,6 +1011,13 @@ export function ProductForm({
           initialAllSizes={allSizes}
           onChange={setSizes}
         />
+      </div>
+
+      <div>
+        <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+          Product Images
+        </label>
+        <ProductImagesEditor images={images} colors={colors} onChange={setImages} />
       </div>
 
       <div>
@@ -887,23 +1120,18 @@ export function ProductForm({
 
       <div>
         <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-          Inventory
+          Variant Inventory
         </label>
-        <input
-          type="number"
-          name="inventory"
-          min="0"
-          step="1"
-          required
-          value={inventory}
-          onChange={(event) =>
-            setInventory(Math.max(0, Math.floor(Number(event.target.value) || 0)))
-          }
-          className="font-body w-full max-w-xs border border-outline-variant px-3 py-2 text-sm"
+        <ProductVariantInventoryEditor
+          colors={colors}
+          sizes={sizes}
+          variants={variants}
+          onChange={setVariants}
         />
         <p className="font-body mt-2 text-xs leading-normal text-on-surface-variant">
-          When stock is 10 or less, the store shows &quot;Low Stock&quot;.
-          At 0, Add to Cart is disabled.
+          Set stock for each color and size combination. Variants at 10 or less
+          show &quot;Low Stock&quot; on the storefront. At 0, that variant is
+          out of stock.
         </p>
       </div>
 

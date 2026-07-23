@@ -52,6 +52,10 @@ export async function getProductsSchemaStatus(): Promise<ProductsSchemaStatus> {
       label: "brands",
       run: () => supabase.from("brands").select("id").limit(1),
     },
+    {
+      label: "product_variants",
+      run: () => supabase.from("product_variants").select("id").limit(1),
+    },
   ] as const;
 
   for (const check of checks) {

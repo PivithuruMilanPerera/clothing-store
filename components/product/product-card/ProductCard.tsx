@@ -28,7 +28,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   );
   const ribbonLabel = saleLabel ?? product.badge;
   const isOutOfStock = product.inventory <= 0;
-  const isLowStock = product.inventory > 0 && product.inventory <= 10;
+  const isLowStock = product.isLowStock ?? false;
 
   return (
     <article
@@ -71,7 +71,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </div>
 
         {/* ── Info ── */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-1.5 bg-surface-container-lowest px-2.5 py-3.5 text-center sm:px-3 sm:py-4 md:px-4 md:py-5">
+        <div className="flex flex-1 flex-col items-center gap-1.5 bg-surface-container-lowest px-2.5 py-3.5 text-center sm:px-3 sm:py-4 md:px-4 md:py-5">
           {/* Brand */}
           <p className="font-label text-[9px] font-bold uppercase tracking-[0.32em] text-on-surface-variant md:text-[10px] md:tracking-[0.38em]">
             {product.brand}
@@ -117,14 +117,18 @@ export function ProductCard({ product, className }: ProductCardProps) {
           ) : null}
 
           {isOutOfStock ? (
-            <p className="font-label pt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-error md:text-[11px]">
+            <p className="font-label mt-auto pt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant md:text-[11px]">
               Out of stock
             </p>
           ) : isLowStock ? (
-            <p className="font-label pt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-orange-400 md:text-[11px]">
+            <p className="font-label mt-auto pt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-orange-400 md:text-[11px]">
               Low Stock
             </p>
-          ) : null}
+          ) : (
+            <p className="font-label mt-auto pt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-green-600 md:text-[11px]">
+              In Stock
+            </p>
+          )}
         </div>
       </Link>
     </article>

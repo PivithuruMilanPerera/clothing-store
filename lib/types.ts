@@ -17,6 +17,7 @@ export type Product = {
   discountValue: number;
   discountAmount: number;
   inventory: number;
+  isLowStock?: boolean;
   image: string;
   href: string;
   badge?: string;
@@ -47,6 +48,12 @@ export type ProductDetail = ShopProduct & {
   images: ProductImage[];
   materialsCare: string;
   shippingReturns: string;
+  variantInventory: Array<{
+    colorId: string;
+    sizeId: string;
+    sizeLabel: string;
+    inventory: number;
+  }>;
 };
 
 export type CartItem = {

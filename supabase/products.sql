@@ -90,6 +90,21 @@ create unique index if not exists product_sizes_product_size_idx
   on public.product_sizes (product_id, size_id);
 create index if not exists product_sizes_product_id_idx on public.product_sizes (product_id);
 
+create table if not exists public.product_variants (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products (id) on delete cascade,
+  color_id uuid not null references public.colors (id) on delete restrict,
+  size_id uuid not null references public.sizes (id) on delete restrict,
+  inventory integer not null default 0 check (inventory >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists product_variants_product_color_size_idx
+  on public.product_variants (product_id, color_id, size_id);
+create index if not exists product_variants_product_id_idx
+  on public.product_variants (product_id);
+
 create or replace function public.set_products_updated_at()
 returns trigger
 language plpgsql
@@ -112,6 +127,7 @@ alter table public.brands enable row level security;
 alter table public.product_images enable row level security;
 alter table public.product_colors enable row level security;
 alter table public.product_sizes enable row level security;
+alter table public.product_variants enable row level security;
 
 drop policy if exists "Anyone can view published products" on public.products;
 create policy "Anyone can view published products"
@@ -201,5 +217,21 @@ create policy "Anyone can view product sizes"
 drop policy if exists "Admins can manage product sizes" on public.product_sizes;
 create policy "Admins can manage product sizes"
   on public.product_sizes for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Anyone can view product variants" on public.product_variants;
+create policy "Anyone can view product variants"
+  on public.product_variants for select
+  using (
+    exists (
+      select 1 from public.products p
+      where p.id = product_id and p.is_published = true
+    )
+  );
+
+drop policy if exists "Admins can manage product variants" on public.product_variants;
+create policy "Admins can manage product variants"
+  on public.product_variants for all
   using (public.is_admin())
   with check (public.is_admin());

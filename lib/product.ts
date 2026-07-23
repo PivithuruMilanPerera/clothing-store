@@ -19,6 +19,17 @@ function defaultImages(product: ShopProduct): ProductImage[] {
   return [{ src: product.image, alt: product.name }];
 }
 
+function buildFallbackVariantInventory(product: ShopProduct): ProductDetail["variantInventory"] {
+  return product.sizes.flatMap((sizeLabel) =>
+    product.colors.map((colorId) => ({
+      colorId,
+      sizeId: sizeLabel,
+      sizeLabel,
+      inventory: product.inventory,
+    })),
+  );
+}
+
 function toProductDetail(product: ShopProduct): ProductDetail {
   const slug = slugFromHref(product.href);
   const overrides = productDetailOverrides[slug];
@@ -32,6 +43,11 @@ function toProductDetail(product: ShopProduct): ProductDetail {
     shippingReturns: overrides?.shippingReturns ?? DEFAULT_SHIPPING_RETURNS,
     colors: overrides?.colors ?? product.colors,
     sizes: overrides?.sizes ?? product.sizes,
+    variantInventory: buildFallbackVariantInventory({
+      ...product,
+      colors: overrides?.colors ?? product.colors,
+      sizes: overrides?.sizes ?? product.sizes,
+    }),
   };
 }
 

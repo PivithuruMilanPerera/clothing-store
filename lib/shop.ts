@@ -96,11 +96,17 @@ export function filterProducts(
       return false;
     }
 
-    if (
-      filters.sizes.length > 0 &&
-      !product.sizes.some((size) => filters.sizes.includes(size))
-    ) {
-      return false;
+    if (filters.sizes.length > 0) {
+      const normalizedFilterSizes = filters.sizes.map((size) =>
+        size.trim().toUpperCase(),
+      );
+      const hasMatchingSize = product.sizes.some((size) =>
+        normalizedFilterSizes.includes(size.trim().toUpperCase()),
+      );
+
+      if (!hasMatchingSize) {
+        return false;
+      }
     }
 
     if (
