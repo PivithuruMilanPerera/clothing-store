@@ -1,4 +1,9 @@
+export { AdminDashboard } from "./AdminDashboard";
 export { AdminLoginForm } from "./AdminLoginForm";
+export { AdminProtectedShell } from "./AdminProtectedShell";
 export { AdminNav } from "./AdminNav";
 export { AdminShell } from "./AdminShell";
 export { BannerLogoAdmin } from "./banner-logo/BannerLogoAdmin";
+export { CategoriesAdmin } from "./categories/CategoriesAdmin";
+export { ImageUploadField } from "./ImageUploadField";
+export { ProductsAdmin } from "./products/ProductsAdmin";

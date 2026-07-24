@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import logo from "@/public/logo.png";
 import { Container } from "@/components/ui";
+import { SocialLinks } from "@/components/social";
 import { footerColumns, navLinks } from "@/data/landing";
 
 export function SiteFooter() {
@@ -10,7 +11,7 @@ export function SiteFooter() {
   return (
     <footer className="bg-primary text-on-primary text-sm leading-normal">
       <Container className="pt-16 md:pt-20">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <Link href="/" aria-label="Velvorz home">
               <Image
@@ -26,6 +27,7 @@ export function SiteFooter() {
               pieces designed to move with you. We edit every collection with
               intention so your wardrobe stays focused, not crowded.
             </p>
+            <SocialLinks className="flex items-center gap-4 pt-5" />
           </div>
 
           <div>

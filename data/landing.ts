@@ -1,4 +1,10 @@
-import type { Category, FooterColumn, NavLink, Product } from "@/lib/types";
+import type {
+  Category,
+  FooterColumn,
+  NavLink,
+  Product,
+  SocialLink,
+} from "@/lib/types";
 import kids from "@/app/assets/category/kids-image.jpg";
 import bag from "@/app/assets/category/bags.jpg";
 import women from "@/app/assets/category/women.webp";
@@ -9,9 +15,9 @@ import men from "@/app/assets/category/man.jpg";
 
 export const navLinks: NavLink[] = [
   { label: "Home", href: "/" },
-  { label: "Men", href: "/men" },
-  { label: "Women", href: "/women" },
-  { label: "Kids", href: "/kids" },
+  { label: "Mens", href: "/mens" },
+  { label: "Womens", href: "/womens" },
+  { label: "Baby & Kids", href: "/baby-kids" },
   { label: "Accessories", href: "/accessories" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
@@ -37,6 +43,11 @@ export const preOrderProducts: Product[] = [
     brand: "Velvorz",
     name: "Structured Linen Dress",
     price: 195,
+    basePrice: 195,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image:
       "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80",
     href: "/products/structured-linen-dress",
@@ -48,6 +59,11 @@ export const preOrderProducts: Product[] = [
     brand: "Velvorz",
     name: "Minimal Wool Coat",
     price: 320,
+    basePrice: 320,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image:
       "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=800&q=80",
     href: "/products/minimal-wool-coat",
@@ -59,6 +75,11 @@ export const preOrderProducts: Product[] = [
     brand: "Velvorz",
     name: "Minimal Leather Belt",
     price: 85,
+    basePrice: 85,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image:
       "https://images.unsplash.com/photo-1624222247344-550fb60583fd?w=800&q=80",
     href: "/products/minimal-leather-belt",
@@ -70,6 +91,11 @@ export const preOrderProducts: Product[] = [
     brand: "Velvorz",
     name: "Structured Canvas Tote",
     price: 110,
+    basePrice: 110,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image:
       "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80",
     href: "/products/structured-canvas-tote",
@@ -84,6 +110,11 @@ export const newArrivals: Product[] = [
     brand: "Velvorz",
     name: "Signature Oversized Hoodie",
     price: 120,
+    basePrice: 120,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image: "/temp/hoodie.png",
     href: "/products/signature-oversized-hoodie",
     colors: ["black", "white"],
@@ -93,6 +124,11 @@ export const newArrivals: Product[] = [
     brand: "Velvorz",
     name: "Monolith Leather Sneakers",
     price: 245,
+    basePrice: 245,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image: "/temp/shoo.png",
     href: "/products/monolith-leather-sneakers",
     badge: "NEW",
@@ -103,6 +139,11 @@ export const newArrivals: Product[] = [
     brand: "Velvorz",
     name: "Essential Cotton Tee",
     price: 65,
+    basePrice: 65,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image: "/temp/t.png",
     href: "/products/essential-cotton-tee",
     colors: ["black", "white"],
@@ -112,6 +153,11 @@ export const newArrivals: Product[] = [
     brand: "Velvorz",
     name: "Structured Cargo Trousers",
     price: 185,
+    basePrice: 185,
+    discountType: null,
+    discountValue: 0,
+    discountAmount: 0,
+    inventory: 100,
     image: "/temp/screen.png",
     href: "/products/structured-cargo-trousers",
     colors: ["black", "gray"],
@@ -120,30 +166,27 @@ export const newArrivals: Product[] = [
 
 export const categories: Category[] = [
   {
-    id: "men",
-    name: "Men",
-    image:
-      men.src,
-    href: "/men",
+    id: "mens",
+    name: "Mens",
+    image: men.src,
+    href: "/mens",
   },
   {
-    id: "women",
-    name: "Women",
-    image:
-      women.src,
-    href: "/women",
+    id: "womens",
+    name: "Womens",
+    image: women.src,
+    href: "/womens",
   },
   {
-    id: "kids",
-    name: "Kids",
+    id: "baby-kids",
+    name: "Baby & Kids",
     image: kids.src,
-    href: "/kids",
+    href: "/baby-kids",
   },
   {
     id: "accessories",
     name: "Accessories",
-    image:
-      bag.src,
+    image: bag.src,
     href: "/accessories",
   },
 ];
@@ -165,12 +208,33 @@ export const footerColumns: FooterColumn[] = [
       { label: "Contact", href: "/contact" },
     ],
   },
+];
+
+export const socialLinks: SocialLink[] = [
   {
-    title: "Social",
-    links: [
-      { label: "Instagram", href: "https://instagram.com" },
-      { label: "Twitter", href: "https://twitter.com" },
-    ],
+    label: "Instagram",
+    href: "https://www.instagram.com/velvorz/",
+    icon: "instagram",
+  },
+  {
+    label: "Facebook",
+    href: "https://www.facebook.com/profile.php?id=61591352036910",
+    icon: "facebook",
+  },
+  {
+    label: "YouTube",
+    href: "https://www.youtube.com/@VELVORZ-clothing",
+    icon: "youtube",
+  },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/company/velvorz/",
+    icon: "linkedin",
+  },
+  {
+    label: "TikTok",
+    href: "https://www.tiktok.com/@velvorz",
+    icon: "tiktok",
   },
 ];
 

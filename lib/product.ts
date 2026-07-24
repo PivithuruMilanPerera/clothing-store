@@ -1,6 +1,5 @@
 import { newArrivals } from "@/data/landing";
 import { productDetailOverrides } from "@/data/products";
-import { shopProducts } from "@/data/shop";
 import type { ProductDetail, ProductImage, ShopProduct } from "@/lib/types";
 
 const DEFAULT_DESCRIPTION =
@@ -20,6 +19,39 @@ function defaultImages(product: ShopProduct): ProductImage[] {
   return [{ src: product.image, alt: product.name }];
 }
 
+function buildFallbackVariantInventory(product: ShopProduct): ProductDetail["variantInventory"] {
+  if (product.colors.length > 0 && product.sizes.length > 0) {
+    return product.sizes.flatMap((sizeLabel) =>
+      product.colors.map((colorId) => ({
+        colorId,
+        sizeId: sizeLabel,
+        sizeLabel,
+        inventory: product.inventory,
+      })),
+    );
+  }
+
+  if (product.colors.length > 0) {
+    return product.colors.map((colorId) => ({
+      colorId,
+      sizeId: "",
+      sizeLabel: "",
+      inventory: product.inventory,
+    }));
+  }
+
+  if (product.sizes.length > 0) {
+    return product.sizes.map((sizeLabel) => ({
+      colorId: "",
+      sizeId: sizeLabel,
+      sizeLabel,
+      inventory: product.inventory,
+    }));
+  }
+
+  return [];
+}
+
 function toProductDetail(product: ShopProduct): ProductDetail {
   const slug = slugFromHref(product.href);
   const overrides = productDetailOverrides[slug];
@@ -33,6 +65,11 @@ function toProductDetail(product: ShopProduct): ProductDetail {
     shippingReturns: overrides?.shippingReturns ?? DEFAULT_SHIPPING_RETURNS,
     colors: overrides?.colors ?? product.colors,
     sizes: overrides?.sizes ?? product.sizes,
+    variantInventory: buildFallbackVariantInventory({
+      ...product,
+      colors: overrides?.colors ?? product.colors,
+      sizes: overrides?.sizes ?? product.sizes,
+    }),
   };
 }
 
@@ -69,11 +106,6 @@ const landingCatalog: ShopProduct[] = [
 ];
 
 const catalog = new Map<string, ProductDetail>();
-
-for (const product of shopProducts) {
-  const detail = toProductDetail(product);
-  catalog.set(detail.slug, detail);
-}
 
 for (const product of landingCatalog) {
   const slug = slugFromHref(product.href);

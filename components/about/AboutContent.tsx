@@ -2,11 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { ShopByCategorySection } from "@/components/landing";
 import { Button } from "@/components/ui";
+import { SocialLinks } from "@/components/social";
 import {
   aboutCraft,
   aboutHeroImage,
   aboutIntro,
   aboutMilestones,
+  aboutSocial,
   aboutStory,
   aboutStoryImage,
   aboutValues,
@@ -68,6 +70,23 @@ export function AboutContent() {
       <ShopByCategorySection />
 
    
+
+      <section className="rounded-2xl border border-outline-variant bg-surface-container-low p-6 md:p-10">
+        <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
+          Connect
+        </p>
+        <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl mt-2 text-on-surface">
+          {aboutSocial.title}
+        </h2>
+        <p className="font-body text-base leading-normal mt-4 max-w-2xl text-on-surface-variant">
+          {aboutSocial.description}
+        </p>
+        <SocialLinks
+          className="mt-6 flex flex-wrap items-center gap-4"
+          iconClassName="h-6 w-6"
+          linkClassName="text-on-surface-variant transition-colors hover:text-on-surface"
+        />
+      </section>
 
       <section className="grid gap-6 rounded-2xl border border-outline-variant bg-surface-container-low p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-12 md:p-10">
         <div className="max-w-2xl">

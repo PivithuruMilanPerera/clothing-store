@@ -13,17 +13,19 @@ export function CategoryCard({ category, className }: CategoryCardProps) {
     <Link
       href={category.href}
       className={cn(
-        "group relative block aspect-[3/5] overflow-hidden md:aspect-[2/3.5]",
+        "group relative block aspect-[3/5] overflow-hidden bg-surface-container-high md:aspect-[2/3.5]",
         className,
       )}
     >
-      <Image
-        src={category.image}
-        alt={category.name}
-        fill
-        sizes="25vw"
-        className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-      />
+      {category.image ? (
+        <Image
+          src={category.image}
+          alt={category.name}
+          fill
+          sizes="25vw"
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+        />
+      ) : null}
       <div className="absolute inset-0 bg-linear-to-t from-primary/70 via-primary/15 to-transparent transition-opacity duration-300 group-hover:from-primary/80" />
 
       <span

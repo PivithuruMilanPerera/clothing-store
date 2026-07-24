@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { saveBannerLogoContent } from "@/app/admin/(dashboard)/banner-logo/actions";
+import { saveBannerLogoContent, deleteLandingImage, deleteLandingImages } from "@/app/admin/(dashboard)/banner-logo/actions";
 import { Button, Input, Popup } from "@/components/ui";
 import { useLandingImageUploader } from "@/hooks/useLandingImageUploader";
+import { isManagedLandingImageUrl } from "@/lib/landing-image-validation";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   addBrandLogo,
@@ -34,6 +35,7 @@ type ImageUploadFieldProps = {
   required?: boolean;
   variant?: "desktop" | "mobile";
   onUploaded: (url: string) => void;
+  onCleared: () => void;
 };
 
 function ImageUploadField({
@@ -42,9 +44,40 @@ function ImageUploadField({
   required = false,
   variant = "desktop",
   onUploaded,
+  onCleared,
 }: ImageUploadFieldProps) {
-  const { inputRef, uploadError, isUploading, onFileChange, openFilePicker } =
-    useLandingImageUploader({ onUploaded });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const [removeImageError, setRemoveImageError] = useState<string | null>(null);
+  const {
+    inputRef,
+    uploadError,
+    uploadSuccess,
+    isUploading,
+    maxFileSizeLabel,
+    onFileChange,
+    openFilePicker,
+  } = useLandingImageUploader({ onUploaded });
+
+  async function handleConfirmRemoveImage() {
+    if (!imageUrl) {
+      return;
+    }
+
+    setIsDeletingImage(true);
+    setRemoveImageError(null);
+
+    const result = await deleteLandingImage(imageUrl);
+    if (result.error) {
+      setRemoveImageError(result.error);
+      setIsDeletingImage(false);
+      return;
+    }
+
+    onCleared();
+    setShowDeleteConfirm(false);
+    setIsDeletingImage(false);
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -87,7 +120,7 @@ function ImageUploadField({
           >
             <span className="h-8 w-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary" />
             <span className="font-label text-[10px] font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
-              Uploading...
+              Compressing and uploading...
             </span>
           </div>
         ) : null}
@@ -101,20 +134,78 @@ function ImageUploadField({
         onChange={onFileChange}
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           variant="secondary"
-          disabled={isUploading}
+          disabled={isUploading || isDeletingImage}
           onClick={openFilePicker}
         >
-          {isUploading ? "Uploading..." : "Upload Image"}
+          {isUploading ? "Uploading..." : imageUrl ? "Change Image" : "Upload Image"}
         </Button>
+        {imageUrl ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isUploading || isDeletingImage}
+            onClick={() => {
+              setRemoveImageError(null);
+              setShowDeleteConfirm(true);
+            }}
+          >
+            Remove Image
+          </Button>
+        ) : null}
+        <span className="font-body text-xs text-on-surface-variant">
+          Max {maxFileSizeLabel}
+        </span>
       </div>
+
+      {uploadSuccess ? (
+        <p className="font-body text-sm text-green-600">{uploadSuccess}</p>
+      ) : null}
 
       {uploadError ? (
         <p className="font-body text-sm text-error">{uploadError}</p>
       ) : null}
+      {removeImageError ? (
+        <p className="font-body text-sm text-error">{removeImageError}</p>
+      ) : null}
+
+      <Popup
+        open={showDeleteConfirm}
+        onClose={() => {
+          if (!isDeletingImage) {
+            setShowDeleteConfirm(false);
+          }
+        }}
+        title="Delete Image"
+        description={
+          isManagedLandingImageUrl(imageUrl)
+            ? "This image will be permanently deleted from storage. This action cannot be undone."
+            : "Remove this image? External images will only be cleared from this field."
+        }
+        size="sm"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isDeletingImage}
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isDeletingImage}
+              onClick={handleConfirmRemoveImage}
+            >
+              {isDeletingImage ? "Deleting..." : "Delete Image"}
+            </Button>
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -229,6 +320,9 @@ function BannerEditForm({ slide }: BannerEditFormProps) {
           onUploaded={(url) =>
             dispatch(updateHeroSlide({ id: slide.id, changes: { image: url } }))
           }
+          onCleared={() =>
+            dispatch(updateHeroSlide({ id: slide.id, changes: { image: "" } }))
+          }
         />
         <ImageUploadField
           label="Mobile Banner Image"
@@ -238,6 +332,11 @@ function BannerEditForm({ slide }: BannerEditFormProps) {
           onUploaded={(url) =>
             dispatch(
               updateHeroSlide({ id: slide.id, changes: { mobileImage: url } }),
+            )
+          }
+          onCleared={() =>
+            dispatch(
+              updateHeroSlide({ id: slide.id, changes: { mobileImage: "" } }),
             )
           }
         />
@@ -381,6 +480,9 @@ function LogoEditForm({ logo }: LogoEditFormProps) {
         onUploaded={(url) =>
           dispatch(updateBrandLogo({ id: logo.id, changes: { image: url } }))
         }
+        onCleared={() =>
+          dispatch(updateBrandLogo({ id: logo.id, changes: { image: "" } }))
+        }
       />
     </div>
   );
@@ -410,6 +512,8 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
   const [pendingRemove, setPendingRemove] = useState<PendingRemove | null>(
     null,
   );
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const {
     heroSlides,
     brandLogos,
@@ -473,16 +577,76 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
     dispatch(setEditingBrandLogo(null));
   }
 
-  function handleConfirmRemove() {
+  async function handleConfirmRemove() {
     if (!pendingRemove) return;
 
+    setIsRemoving(true);
+    setRemoveError(null);
+    dispatch(clearSaveResult());
+
+    const imageUrls: string[] = [];
+    const nextHeroSlides =
+      pendingRemove.type === "banner"
+        ? heroSlides.filter((item) => item.id !== pendingRemove.id)
+        : heroSlides;
+    const nextBrandLogos =
+      pendingRemove.type === "logo"
+        ? brandLogos.filter((item) => item.id !== pendingRemove.id)
+        : brandLogos;
+
     if (pendingRemove.type === "banner") {
-      dispatch(removeHeroSlide(pendingRemove.id));
+      const slide = heroSlides.find((item) => item.id === pendingRemove.id);
+      if (slide?.image) {
+        imageUrls.push(slide.image);
+      }
+      if (slide?.mobileImage) {
+        imageUrls.push(slide.mobileImage);
+      }
     } else {
-      dispatch(removeBrandLogo(pendingRemove.id));
+      const logo = brandLogos.find((item) => item.id === pendingRemove.id);
+      if (logo?.image) {
+        imageUrls.push(logo.image);
+      }
+    }
+
+    const saveResult = await saveBannerLogoContent({
+      heroSlides: nextHeroSlides,
+      brandLogos: nextBrandLogos,
+    });
+
+    if (saveResult.error) {
+      setRemoveError(saveResult.error);
+      setIsRemoving(false);
+      return;
+    }
+
+    dispatch(
+      initializeContent({
+        heroSlides: nextHeroSlides,
+        brandLogos: nextBrandLogos,
+      }),
+    );
+    dispatch(
+      setSaveResult({
+        success:
+          saveResult.success ??
+          (pendingRemove.type === "banner"
+            ? "Banner removed."
+            : "Logo removed."),
+      }),
+    );
+
+    if (imageUrls.length > 0) {
+      const deleteResult = await deleteLandingImages(imageUrls);
+      if (deleteResult.error) {
+        setRemoveError(
+          `Removed from the homepage, but some images could not be deleted from storage: ${deleteResult.error}`,
+        );
+      }
     }
 
     setPendingRemove(null);
+    setIsRemoving(false);
   }
 
   const bannerPopupTitle = editingHeroSlide
@@ -504,9 +668,9 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
           Banner & Logo
         </h2>
         <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
-          Manage hero banners and brand logos shown on the homepage. Desktop and
-          mobile banner images are required; key tag, headline, and CTA are
-          optional.
+          Manage hero banners and brand logos shown on the homepage. Images are
+          compressed to WebP on upload (max 5 MB). Desktop and mobile banner
+          images are required; key tag, headline, and CTA are optional.
         </p>
       </div>
 
@@ -519,6 +683,12 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
       {saveError ? (
         <p className="rounded-lg border border-error/30 bg-error/5 px-4 py-3 font-body text-sm text-error">
           {saveError}
+        </p>
+      ) : null}
+
+      {removeError ? (
+        <p className="rounded-lg border border-error/30 bg-error/5 px-4 py-3 font-body text-sm text-error">
+          {removeError}
         </p>
       ) : null}
 
@@ -665,13 +835,17 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
 
       <Popup
         open={Boolean(pendingRemove)}
-        onClose={() => setPendingRemove(null)}
+        onClose={() => {
+          if (!isRemoving) {
+            setPendingRemove(null);
+          }
+        }}
         title={
           pendingRemove?.type === "banner" ? "Remove Banner" : "Remove Logo"
         }
         description={
           pendingRemove
-            ? `Are you sure you want to remove "${pendingRemove.label}"? This action cannot be undone.`
+            ? `Are you sure you want to remove "${pendingRemove.label}"? Uploaded images will be permanently deleted from storage. This action cannot be undone.`
             : undefined
         }
         size="sm"
@@ -680,12 +854,13 @@ export function BannerLogoAdmin({ initialContent }: BannerLogoAdminProps) {
             <Button
               type="button"
               variant="ghost"
+              disabled={isRemoving}
               onClick={() => setPendingRemove(null)}
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleConfirmRemove}>
-              Remove
+            <Button type="button" disabled={isRemoving} onClick={handleConfirmRemove}>
+              {isRemoving ? "Removing..." : "Remove"}
             </Button>
           </div>
         }

@@ -2,19 +2,33 @@ import type { CartItem, ProductColor, ProductSize } from "@/lib/types";
 
 export const CART_STORAGE_KEY = "velvorz-cart";
 
-export const colorLabels: Record<ProductColor, string> = {
-  black: "Black",
-  white: "White",
-  gray: "Gray",
-  cream: "Cream",
-};
+export function getColorLabel(
+  colorId: string,
+  colorOptions?: Array<{ id: string; name: string }>,
+  colorName?: string,
+): string {
+  if (colorName?.trim()) {
+    return colorName.trim();
+  }
 
-export const colorSwatchStyles: Record<ProductColor, string> = {
-  black: "bg-black",
-  white: "bg-white",
-  gray: "bg-neutral-400",
-  cream: "bg-[#f0ebe3]",
-};
+  const match = colorOptions?.find((color) => color.id === colorId);
+  if (match) {
+    return match.name;
+  }
+
+  if (!colorId.includes("-")) {
+    return colorId.charAt(0).toUpperCase() + colorId.slice(1);
+  }
+
+  return colorId;
+}
+
+export function getColorHex(
+  colorId: string,
+  colorOptions?: Array<{ id: string; hex: string }>,
+): string | undefined {
+  return colorOptions?.find((color) => color.id === colorId)?.hex;
+}
 
 export function createCartItemId(
   slug: string,

@@ -1,24 +1,36 @@
-export type ProductCategory = "men" | "women" | "kids" | "accessories";
+export type ProductCategory = string;
 
-export type ProductSize = "XS" | "S" | "M" | "L" | "XL";
+export type ProductSize = string;
 
-export type ProductColor = "black" | "white" | "gray" | "cream";
+export type ProductColor = string;
 
 export type SortOption = "newest" | "price-asc" | "price-desc" | "name";
+export type DiscountType = "percentage" | "fixed";
 
 export type Product = {
   id: string;
   brand: string;
   name: string;
   price: number;
+  basePrice: number;
+  discountType: DiscountType | null;
+  discountValue: number;
+  discountAmount: number;
+  inventory: number;
+  isLowStock?: boolean;
   image: string;
   href: string;
   badge?: string;
   colors?: ProductColor[];
+  colorOptions?: Array<{ id: string; name: string; hex: string }>;
 };
 
 export type ShopProduct = Product & {
   category: ProductCategory;
+  categorySlugs: ProductCategory[];
+  categoryLabels?: string[];
+  categoryId?: string;
+  description?: string;
   sizes: ProductSize[];
   colors: ProductColor[];
   createdAt: string;
@@ -27,6 +39,7 @@ export type ShopProduct = Product & {
 export type ProductImage = {
   src: string;
   alt: string;
+  colorId?: string;
 };
 
 export type ProductDetail = ShopProduct & {
@@ -35,6 +48,12 @@ export type ProductDetail = ShopProduct & {
   images: ProductImage[];
   materialsCare: string;
   shippingReturns: string;
+  variantInventory: Array<{
+    colorId: string;
+    sizeId: string;
+    sizeLabel: string;
+    inventory: number;
+  }>;
 };
 
 export type CartItem = {
@@ -44,6 +63,7 @@ export type CartItem = {
   image: string;
   price: number;
   color: ProductColor;
+  colorName?: string;
   size: ProductSize;
   quantity: number;
 };
@@ -58,11 +78,18 @@ export type Category = {
 export type NavLink = {
   label: string;
   href: string;
+  children?: NavLink[];
 };
 
 export type FooterColumn = {
   title: string;
   links: NavLink[];
+};
+
+export type SocialLink = {
+  label: string;
+  href: string;
+  icon: "instagram" | "facebook" | "youtube" | "linkedin" | "tiktok";
 };
 
 export type Profile = {

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { UserIcon } from "@/components/icons";
 import { Container } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import logo from "@/public/logo.png";
+import { getMainCategoryLinks } from "@/lib/categories";
+import type { NavLink } from "@/lib/types";
 import { CartLink } from "./CartLink";
 import { HeaderAccountLink } from "./HeaderAccountLink";
 import { HeaderNav } from "./HeaderNav";
@@ -15,8 +16,15 @@ type SiteHeaderProps = {
   className?: string;
 };
 
-export function SiteHeader({ variant = "solid", className }: SiteHeaderProps) {
+export async function SiteHeader({ variant = "solid", className }: SiteHeaderProps) {
   const isTransparent = variant === "transparent";
+  const mainCategoryLinks = await getMainCategoryLinks();
+  const navLinks: NavLink[] = [
+    { label: "Home", href: "/" },
+    ...mainCategoryLinks,
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
+  ];
 
   return (
     <header
@@ -30,7 +38,7 @@ export function SiteHeader({ variant = "solid", className }: SiteHeaderProps) {
     >
       <Container className="flex h-16 items-center justify-between md:h-20">
         <div className="flex items-center gap-4">
-          <MobileNavDrawer isTransparent={isTransparent} />
+          <MobileNavDrawer isTransparent={isTransparent} navLinks={navLinks} />
           <Link href="/" aria-label="Velvorz home">
             <Image
               src={logo}
@@ -45,7 +53,7 @@ export function SiteHeader({ variant = "solid", className }: SiteHeaderProps) {
           </Link>
         </div>
 
-        <HeaderNav isTransparent={isTransparent} />
+        <HeaderNav isTransparent={isTransparent} navLinks={navLinks} />
 
         <div
           className={cn(

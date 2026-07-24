@@ -3,17 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { saveLandingContent } from "@/lib/landing-content";
+import { isManagedLandingImageUrl } from "@/lib/landing-image-validation";
 import { hasAdminCredentials } from "@/lib/supabase/admin";
 import {
+  deleteLandingImagesFromStorage,
   uploadLandingImageToStorage,
-  validateLandingImageFile,
 } from "@/lib/supabase/landing-storage";
+import { validateLandingImageFile } from "@/lib/landing-image-validation";
 import type { LandingContent } from "@/lib/types";
 
 export type BannerLogoActionState = {
   error?: string;
   success?: string;
   imageUrl?: string;
+  originalSize?: number;
+  compressedSize?: number;
 };
 
 export async function uploadLandingImage(
@@ -38,16 +42,80 @@ export async function uploadLandingImage(
   }
 
   try {
-    const imageUrl = await uploadLandingImageToStorage(file);
+    const { url, originalSize, compressedSize } =
+      await uploadLandingImageToStorage(file);
 
     return {
-      success: "Image uploaded.",
-      imageUrl,
+      success: "Image uploaded successfully.",
+      imageUrl: url,
+      originalSize,
+      compressedSize,
     };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to upload image.";
 
+    return { error: message };
+  }
+}
+
+export async function deleteLandingImage(
+  imageUrl: string,
+): Promise<{ error?: string; success?: string }> {
+  await requireAdmin();
+
+  const trimmedUrl = imageUrl.trim();
+  if (!trimmedUrl) {
+    return { error: "Image URL is required." };
+  }
+
+  if (!isManagedLandingImageUrl(trimmedUrl)) {
+    return { success: "Image removed." };
+  }
+
+  if (!hasAdminCredentials()) {
+    return { error: "Supabase storage is not configured." };
+  }
+
+  try {
+    await deleteLandingImagesFromStorage([trimmedUrl]);
+    return { success: "Image deleted from storage." };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to delete image from storage.";
+    return { error: message };
+  }
+}
+
+export async function deleteLandingImages(
+  imageUrls: string[],
+): Promise<{ error?: string; success?: string }> {
+  await requireAdmin();
+
+  const trimmedUrls = imageUrls.map((url) => url.trim()).filter(Boolean);
+  if (trimmedUrls.length === 0) {
+    return { success: "Images removed." };
+  }
+
+  const managedUrls = trimmedUrls.filter(isManagedLandingImageUrl);
+  if (managedUrls.length === 0) {
+    return { success: "Images removed." };
+  }
+
+  if (!hasAdminCredentials()) {
+    return { error: "Supabase storage is not configured." };
+  }
+
+  try {
+    await deleteLandingImagesFromStorage(managedUrls);
+    return { success: "Images deleted from storage." };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to delete images from storage.";
     return { error: message };
   }
 }

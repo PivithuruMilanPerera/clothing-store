@@ -1,15 +1,6 @@
 {
   "heroSlides": [
     {
-      "id": "precision",
-      "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108919500-b428bced.jpg",
-      "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111733903-142cb83d.webp",
-      "cta": {
-        "label": "Shop Collection",
-        "href": "/collection"
-      }
-    },
-    {
       "id": "tailored-motion",
       "image": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782108926360-13bd885d.jpg",
       "mobileImage": "https://nieropjusrtufhbgwhkw.supabase.co/storage/v1/object/public/landing/1782111800829-7ea162c4.webp",

@@ -108,3 +108,9 @@ export const aboutCraft = {
   description:
     "From fabric sourcing to final inspection, we work with partners who meet our standards for workmanship and fair labor. Packaging is kept minimal, production runs are controlled, and we are always looking for ways to reduce waste without cutting corners on the garment itself.",
 };
+
+export const aboutSocial = {
+  title: "Follow Us",
+  description:
+    "Stay close to new drops, lookbook edits, and behind-the-scenes moments from the VELVORZ studio.",
+};

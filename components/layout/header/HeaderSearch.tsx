@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SearchIcon, XIcon } from "@/components/icons";
 import { Container } from "@/components/ui";
+import { buildShopHref } from "@/lib/shop-url";
 import { cn } from "@/lib/utils";
 
 type HeaderSearchProps = {
@@ -40,7 +41,7 @@ export function HeaderSearch({ isTransparent = false }: HeaderSearchProps) {
       return;
     }
 
-    router.push(`/shop?q=${encodeURIComponent(query)}`);
+    router.push(buildShopHref({ q: query }));
     setIsOpen(false);
   };
 
@@ -80,7 +81,7 @@ export function HeaderSearch({ isTransparent = false }: HeaderSearchProps) {
                 ref={inputRef}
                 type="search"
                 name="q"
-                placeholder="Search products..."
+                placeholder="Search products, brands, or categories..."
                 autoComplete="off"
                 className="font-body text-base leading-normal min-w-0 flex-1 bg-transparent text-on-surface outline-none placeholder:text-on-surface-variant"
               />

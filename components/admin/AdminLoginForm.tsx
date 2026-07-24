@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { adminLogin, type AdminLoginState } from "@/app/admin/login/actions";
+import { adminLogin, type AdminLoginState } from "@/app/admin/(public)/login/actions";
 import { Button, Input } from "@/components/ui";
 
 const initialState: AdminLoginState | null = null;
