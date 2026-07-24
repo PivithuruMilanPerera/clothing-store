@@ -3,6 +3,7 @@ export const LOW_STOCK_THRESHOLD = 10;
 export type VariantStock = {
   colorId: string;
   sizeId: string;
+  sizeLabel?: string;
   inventory: number;
 };
 
@@ -22,16 +23,37 @@ export function isLowStock(inventory: number): boolean {
   return inventory > 0 && inventory <= LOW_STOCK_THRESHOLD;
 }
 
+export function matchesVariantStock(
+  variant: VariantStock,
+  colorId: string,
+  sizeLabel: string,
+): boolean {
+  const hasColor = Boolean(variant.colorId);
+  const hasSize = Boolean(variant.sizeId || variant.sizeLabel);
+
+  if (hasColor && hasSize) {
+    return variant.colorId === colorId && variant.sizeLabel === sizeLabel;
+  }
+
+  if (hasColor) {
+    return variant.colorId === colorId;
+  }
+
+  if (hasSize) {
+    return variant.sizeLabel === sizeLabel;
+  }
+
+  return false;
+}
+
 export function getVariantInventory(
   variants: VariantStock[],
   colorId: string,
-  sizeId: string,
+  sizeLabel: string,
 ): number {
   return (
-    variants.find(
-      (variant) =>
-        variant.colorId === colorId && variant.sizeId === sizeId,
-    )?.inventory ?? 0
+    variants.find((variant) => matchesVariantStock(variant, colorId, sizeLabel))
+      ?.inventory ?? 0
   );
 }
 

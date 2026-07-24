@@ -9,16 +9,16 @@ import {
   type ChangeEvent,
 } from "react";
 import {
-  uploadLandingImage,
-  type BannerLogoActionState,
-} from "@/app/admin/(dashboard)/banner-logo/actions";
+  uploadProductImage,
+  type ProductUploadActionState,
+} from "@/app/admin/(dashboard)/upload/actions";
 import {
-  MAX_LANDING_IMAGE_SIZE,
-  validateLandingImageFile,
-} from "@/lib/landing-image-validation";
+  MAX_PRODUCT_IMAGE_SIZE,
+  validateProductImageFile,
+} from "@/lib/product-image-validation";
 import { formatFileSize } from "@/lib/utils";
 
-type UseLandingImageUploaderParams = {
+type UseProductImageUploaderParams = {
   onUploaded: (url: string) => void;
 };
 
@@ -37,18 +37,18 @@ function formatCompressionMessage(
   return `Image uploaded. Compressed from ${formatFileSize(originalSize)} to ${formatFileSize(compressedSize)} (${savedPercent}% smaller).`;
 }
 
-export function useLandingImageUploader({
+export function useProductImageUploader({
   onUploaded,
-}: UseLandingImageUploaderParams) {
+}: UseProductImageUploaderParams) {
   const inputRef = useRef<HTMLInputElement>(null);
   const onUploadedRef = useRef(onUploaded);
-  const lastHandledUploadRef = useRef<BannerLogoActionState | null>(null);
+  const lastHandledUploadRef = useRef<ProductUploadActionState | null>(null);
   const [clientError, setClientError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadState, uploadAction, isUploading] = useActionState<
-    BannerLogoActionState | null,
+    ProductUploadActionState | null,
     FormData
-  >(uploadLandingImage, null);
+  >(uploadProductImage, null);
 
   useEffect(() => {
     onUploadedRef.current = onUploaded;
@@ -104,7 +104,7 @@ export function useLandingImageUploader({
     setClientError(null);
     setUploadSuccess(null);
 
-    const validationError = validateLandingImageFile(file);
+    const validationError = validateProductImageFile(file);
     if (validationError) {
       setClientError(validationError);
       event.target.value = "";
@@ -124,7 +124,7 @@ export function useLandingImageUploader({
     uploadError: clientError ?? uploadState?.error ?? null,
     uploadSuccess,
     isUploading,
-    maxFileSizeLabel: formatFileSize(MAX_LANDING_IMAGE_SIZE),
+    maxFileSizeLabel: formatFileSize(MAX_PRODUCT_IMAGE_SIZE),
     openFilePicker,
     onFileChange,
   };

@@ -57,8 +57,8 @@ type ProductImageRow = {
 type ProductVariantRow = {
   id: string;
   product_id: string;
-  color_id: string;
-  size_id: string;
+  color_id: string | null;
+  size_id: string | null;
   inventory: number;
   colors: Color | Color[] | null;
   sizes: Size | Size[] | null;
@@ -342,8 +342,8 @@ export function toProductDetail(
     materialsCare: product.materials_care || DEFAULT_MATERIALS_CARE,
     shippingReturns: product.shipping_returns || DEFAULT_SHIPPING_RETURNS,
     variantInventory: (product.variants ?? []).map((variant) => ({
-      colorId: variant.color_id,
-      sizeId: variant.size_id,
+      colorId: variant.color_id ?? "",
+      sizeId: variant.size_id ?? "",
       sizeLabel: variant.size?.label ?? "",
       inventory: variant.inventory,
     })),

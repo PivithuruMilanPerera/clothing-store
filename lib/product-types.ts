@@ -43,8 +43,8 @@ export type StoreProductImage = {
 export type StoreProductVariant = {
   id: string;
   product_id: string;
-  color_id: string;
-  size_id: string;
+  color_id: string | null;
+  size_id: string | null;
   inventory: number;
   color?: Color;
   size?: Size;

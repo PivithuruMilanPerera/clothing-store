@@ -16,6 +16,9 @@ import {
 } from "@/lib/products";
 import { computeFinalPrice } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
+import { hasAdminCredentials } from "@/lib/supabase/admin";
+import { deleteProductImagesFromStorage } from "@/lib/supabase/product-storage";
+import { isManagedProductImageUrl } from "@/lib/product-image-validation";
 import type { StoreCategory } from "@/lib/category-types";
 import type { DiscountType } from "@/lib/types";
 
@@ -54,7 +57,11 @@ export async function repairProductsSchema(
 type ImageInput = { url: string; alt?: string; colorId?: string };
 type ColorInput = { id: string };
 type SizeInput = { id: string };
-type VariantInput = { colorId: string; sizeId: string; inventory: number };
+type VariantInput = {
+  colorId: string;
+  sizeId: string;
+  inventory: number;
+};
 
 type ProductWriteInput = {
   name: string;
@@ -188,16 +195,18 @@ function parseVariants(value: FormDataEntryValue | null): VariantInput[] {
     const parsed = JSON.parse(String(value ?? "[]")) as VariantInput[];
     return Array.isArray(parsed)
       ? parsed
-          .filter(
-            (variant) =>
-              typeof variant?.colorId === "string" &&
-              variant.colorId.trim() &&
-              typeof variant?.sizeId === "string" &&
-              variant.sizeId.trim(),
-          )
+          .filter((variant) => {
+            const colorId =
+              typeof variant?.colorId === "string" ? variant.colorId.trim() : "";
+            const sizeId =
+              typeof variant?.sizeId === "string" ? variant.sizeId.trim() : "";
+            return Boolean(colorId || sizeId);
+          })
           .map((variant) => ({
-            colorId: variant.colorId.trim(),
-            sizeId: variant.sizeId.trim(),
+            colorId:
+              typeof variant.colorId === "string" ? variant.colorId.trim() : "",
+            sizeId:
+              typeof variant.sizeId === "string" ? variant.sizeId.trim() : "",
             inventory: Math.max(
               0,
               Math.floor(Number(variant.inventory ?? 0) || 0),
@@ -272,8 +281,8 @@ async function replaceProductRelations(
     await supabase.from("product_variants").insert(
       variants.map((variant) => ({
         product_id: productId,
-        color_id: variant.colorId,
-        size_id: variant.sizeId,
+        color_id: variant.colorId || null,
+        size_id: variant.sizeId || null,
         inventory: variant.inventory,
       })),
     );
@@ -296,7 +305,7 @@ export async function createProduct(
   const materialsCare = String(formData.get("materials_care") ?? "").trim();
   const shippingReturns = String(formData.get("shipping_returns") ?? "").trim();
   const badge = String(formData.get("badge") ?? "").trim() || null;
-  const isPublished = formData.get("is_published") === "on";
+  const isPublished = formData.get("is_published") === "true";
   const images = parseImages(formData.get("images_json"));
   const colors = parseColors(formData.get("colors_json"));
   const sizes = parseSizes(formData.get("sizes_json"));
@@ -323,12 +332,6 @@ export async function createProduct(
   }
   if (images.length === 0) {
     return { error: "At least one product image is required." };
-  }
-  if (colors.length === 0) {
-    return { error: "At least one color is required." };
-  }
-  if (sizes.length === 0) {
-    return { error: "Add at least one size." };
   }
 
   const pricing = computeFinalPrice(basePrice, discountType, discountValue);
@@ -400,7 +403,7 @@ export async function updateProduct(
   const materialsCare = String(formData.get("materials_care") ?? "").trim();
   const shippingReturns = String(formData.get("shipping_returns") ?? "").trim();
   const badge = String(formData.get("badge") ?? "").trim() || null;
-  const isPublished = formData.get("is_published") === "on";
+  const isPublished = formData.get("is_published") === "true";
   const images = parseImages(formData.get("images_json"));
   const colors = parseColors(formData.get("colors_json"));
   const sizes = parseSizes(formData.get("sizes_json"));
@@ -428,12 +431,6 @@ export async function updateProduct(
   }
   if (images.length === 0) {
     return { error: "At least one product image is required." };
-  }
-  if (colors.length === 0) {
-    return { error: "At least one color is required." };
-  }
-  if (sizes.length === 0) {
-    return { error: "Add at least one size." };
   }
 
   const pricing = computeFinalPrice(basePrice, discountType, discountValue);
@@ -508,6 +505,20 @@ export async function deleteProduct(
   const existing = existingProducts.find((product) => product.id === id);
   if (!existing) return { error: "Product not found." };
 
+  const imageUrls = existing.images.map((image) => image.url).filter(Boolean);
+
+  if (hasAdminCredentials() && imageUrls.length > 0) {
+    try {
+      await deleteProductImagesFromStorage(imageUrls);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to delete product images from storage.";
+      return { error: message };
+    }
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("products").delete().eq("id", id);
 
@@ -517,6 +528,36 @@ export async function deleteProduct(
 
   await revalidateProductPaths(existing.slug);
   return { success: "Product deleted." };
+}
+
+export async function deleteProductImage(
+  imageUrl: string,
+): Promise<{ error?: string; success?: string }> {
+  await requireAdmin();
+
+  const trimmedUrl = imageUrl.trim();
+  if (!trimmedUrl) {
+    return { error: "Image URL is required." };
+  }
+
+  if (!isManagedProductImageUrl(trimmedUrl)) {
+    return { success: "Image removed." };
+  }
+
+  if (!hasAdminCredentials()) {
+    return { error: "Supabase storage is not configured." };
+  }
+
+  try {
+    await deleteProductImagesFromStorage([trimmedUrl]);
+    return { success: "Image deleted from storage." };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to delete image from storage.";
+    return { error: message };
+  }
 }
 
 export async function fetchAllColors(): Promise<Color[]> {

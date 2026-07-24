@@ -20,14 +20,36 @@ function defaultImages(product: ShopProduct): ProductImage[] {
 }
 
 function buildFallbackVariantInventory(product: ShopProduct): ProductDetail["variantInventory"] {
-  return product.sizes.flatMap((sizeLabel) =>
-    product.colors.map((colorId) => ({
+  if (product.colors.length > 0 && product.sizes.length > 0) {
+    return product.sizes.flatMap((sizeLabel) =>
+      product.colors.map((colorId) => ({
+        colorId,
+        sizeId: sizeLabel,
+        sizeLabel,
+        inventory: product.inventory,
+      })),
+    );
+  }
+
+  if (product.colors.length > 0) {
+    return product.colors.map((colorId) => ({
       colorId,
+      sizeId: "",
+      sizeLabel: "",
+      inventory: product.inventory,
+    }));
+  }
+
+  if (product.sizes.length > 0) {
+    return product.sizes.map((sizeLabel) => ({
+      colorId: "",
       sizeId: sizeLabel,
       sizeLabel,
       inventory: product.inventory,
-    })),
-  );
+    }));
+  }
+
+  return [];
 }
 
 function toProductDetail(product: ShopProduct): ProductDetail {

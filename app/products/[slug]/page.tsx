@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ProductDetailContent } from "@/components/product";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { Container } from "@/components/ui";
-import { getProductBySlug } from "@/lib/product";
 import { getPublishedProductDetail } from "@/lib/products";
 
 type ProductPageProps = {
@@ -14,8 +13,7 @@ export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product =
-    (await getPublishedProductDetail(slug)) ?? getProductBySlug(slug);
+  const product = await getPublishedProductDetail(slug);
 
   if (!product) {
     return { title: "VELVORZ" };
@@ -29,8 +27,7 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product =
-    (await getPublishedProductDetail(slug)) ?? getProductBySlug(slug);
+  const product = await getPublishedProductDetail(slug);
 
   if (!product) {
     notFound();

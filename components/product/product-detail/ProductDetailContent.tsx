@@ -9,6 +9,7 @@ import { ProductCornerRibbon } from "@/components/product/product-corner-ribbon/
 import { Button } from "@/components/ui";
 import { getColorHex, getColorLabel } from "@/lib/cart";
 import {
+  getVariantInventory,
   isLowStock as hasLowStockLevel,
   isOutOfStock as isStockDepleted,
 } from "@/lib/inventory";
@@ -188,11 +189,50 @@ function ProductImageGallery({
 }
 
 function getDefaultSize(sizes: string[]): string {
+  if (sizes.length === 0) {
+    return "";
+  }
+
   if (sizes.includes("M")) {
     return "M";
   }
 
   return sizes[0];
+}
+
+function resolveSelectedVariantStock(
+  product: ProductDetail,
+  selectedColor: string,
+  selectedSize: string,
+): number | null {
+  if (product.variantInventory.length === 0) {
+    return product.inventory;
+  }
+
+  const hasColors = product.colors.length > 0;
+  const hasSizes = product.sizes.length > 0;
+
+  if (hasColors && hasSizes) {
+    return selectedSize
+      ? getVariantInventory(
+          product.variantInventory,
+          selectedColor,
+          selectedSize,
+        )
+      : null;
+  }
+
+  if (hasColors) {
+    return getVariantInventory(product.variantInventory, selectedColor, "");
+  }
+
+  if (hasSizes) {
+    return selectedSize
+      ? getVariantInventory(product.variantInventory, "", selectedSize)
+      : null;
+  }
+
+  return product.inventory;
 }
 
 function getImagesForColor(
@@ -236,25 +276,12 @@ function getFallbackImageIndexForColor(
   return 0;
 }
 
-function getVariantStock(
-  variantInventory: ProductDetail["variantInventory"],
-  colorId: string,
-  sizeLabel: string,
-): number {
-  return (
-    variantInventory.find(
-      (variant) =>
-        variant.colorId === colorId && variant.sizeLabel === sizeLabel,
-    )?.inventory ?? 0
-  );
-}
-
 export function ProductDetailContent({ product }: ProductDetailContentProps) {
   const router = useRouter();
   const { addItem } = useCart();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(
-    product.colors[0],
+    product.colors[0] ?? "",
   );
   const [selectedSize, setSelectedSize] = useState(
     getDefaultSize(product.sizes),
@@ -272,11 +299,11 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
     product.discountAmount,
   );
   const ribbonLabel = saleLabel ?? product.badge;
-  const selectedVariantStock = selectedSize
-    ? product.variantInventory.length > 0
-      ? getVariantStock(product.variantInventory, selectedColor, selectedSize)
-      : product.inventory
-    : null;
+  const selectedVariantStock = resolveSelectedVariantStock(
+    product,
+    selectedColor,
+    selectedSize,
+  );
   const isProductOutOfStock = isStockDepleted(product.inventory);
   const isVariantOutOfStock =
     selectedVariantStock !== null && isStockDepleted(selectedVariantStock);
@@ -306,7 +333,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
       return;
     }
 
-    if (!selectedSize) {
+    if (product.sizes.length > 0 && !selectedSize) {
       setSizeError(true);
       return;
     }
@@ -319,7 +346,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
       price: product.price,
       color: selectedColor,
       colorName: getColorLabel(selectedColor, product.colorOptions),
-      size: selectedSize,
+      size: selectedSize || "One Size",
       quantity: Math.min(quantity, selectedVariantStock ?? product.inventory),
     });
     router.push("/cart");
@@ -366,6 +393,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
           </p>
         )}
 
+        {product.colors.length > 0 ? (
         <div className="mt-8 border-t border-outline-variant pt-8">
           <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
             Color: {getColorLabel(selectedColor, product.colorOptions)}
@@ -392,7 +420,9 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
             })}
           </div>
         </div>
+        ) : null}
 
+        {product.sizes.length > 0 ? (
         <div className="mt-8">
           <div className="flex items-center justify-between gap-4">
             <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
@@ -408,7 +438,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
           <div className="mt-3 flex flex-wrap gap-2">
             {product.sizes.map((size) => {
               const isActive = size === selectedSize;
-              const sizeStock = getVariantStock(
+              const sizeStock = getVariantInventory(
                 product.variantInventory,
                 selectedColor,
                 size,
@@ -441,6 +471,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
             })}
           </div>
         </div>
+        ) : null}
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="shrink-0">

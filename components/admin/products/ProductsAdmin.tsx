@@ -1,16 +1,18 @@
 "use client";
 
-import { Pencil, Trash2, X } from "lucide-react";
+import { Pencil, SlidersHorizontal, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { SearchIcon } from "@/components/icons";
 import {
   createBrand,
   createColor,
   createProduct,
   createSize,
   deleteProduct,
+  deleteProductImage,
   fetchAllBrands,
   fetchAllColors,
   fetchAllSizes,
@@ -18,10 +20,11 @@ import {
   updateProduct,
 } from "@/app/admin/(dashboard)/products/actions";
 import { Button, Popup } from "@/components/ui";
-import { useAdminImageUploader } from "@/hooks/useAdminImageUploader";
+import { useProductImageUploader } from "@/hooks/useProductImageUploader";
 import type { CategoryTreeNode } from "@/lib/category-types";
 import { normalizeHexColor } from "@/lib/color-utils";
 import { flattenCategoryTreeOptions } from "@/lib/category-tree";
+import { getProductStockState, LOW_STOCK_THRESHOLD } from "@/lib/inventory";
 import type {
   Brand,
   Color,
@@ -32,6 +35,7 @@ import type { ProductsSchemaStatus } from "@/lib/products-schema-types";
 import { computeFinalPrice } from "@/lib/pricing";
 import type { DiscountType } from "@/lib/types";
 import { cn, formatPrice } from "@/lib/utils";
+import { isManagedProductImageUrl } from "@/lib/product-image-validation";
 
 type ProductsAdminProps = {
   products: StoreProductWithRelations[];
@@ -45,6 +49,136 @@ type ProductsAdminProps = {
 type ImageEntry = { url: string; alt: string; colorId: string };
 type ColorDraft = { name: string; hex: string };
 type VariantEntry = { colorId: string; sizeId: string; inventory: number };
+type ProductStatusFilter = "all" | "active" | "draft";
+type ProductStockFilter = "all" | "in-stock" | "low-stock" | "out-of-stock";
+type ProductSortOption = "newest" | "oldest" | "price-asc" | "price-desc";
+
+const PRODUCTS_PER_PAGE = 15;
+
+const PRODUCT_BADGE_OPTIONS = [
+  { value: "", label: "None" },
+  { value: "NEW", label: "NEW" },
+  { value: "PRE ORDER", label: "PRE ORDER" },
+] as const;
+
+function getCategoryLabel(
+  categoryTree: CategoryTreeNode[],
+  categoryId: string | undefined,
+): string {
+  if (!categoryId) {
+    return "Uncategorized";
+  }
+
+  const options = flattenCategoryTreeOptions(categoryTree);
+  return (
+    options.find((option) => option.id === categoryId)?.label ?? "Uncategorized"
+  );
+}
+
+function getProductStockSummary(product: StoreProductWithRelations) {
+  const stockState = getProductStockState(product.variants ?? []);
+
+  if (stockState.isOutOfStock) {
+    return {
+      label: "Out of stock",
+      className: "border-error/30 bg-error/10 text-error",
+    };
+  }
+
+  if (stockState.isLowStock) {
+    return {
+      label: "Low stock",
+      className: "border-orange-400/30 bg-orange-400/10 text-orange-400",
+    };
+  }
+
+  return {
+    label: "In stock",
+    className: "border-green-600/30 bg-green-600/10 text-green-600",
+  };
+}
+
+function matchesProductSearch(
+  product: StoreProductWithRelations,
+  query: string,
+  categoryTree: CategoryTreeNode[],
+): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const categoryLabel = getCategoryLabel(categoryTree, product.category_id);
+
+  return [
+    product.name,
+    product.brand,
+    product.slug,
+    categoryLabel,
+    product.category?.name ?? "",
+  ].some((value) => value.toLowerCase().includes(normalizedQuery));
+}
+
+function matchesProductStatusFilter(
+  product: StoreProductWithRelations,
+  statusFilter: ProductStatusFilter,
+): boolean {
+  if (statusFilter === "active") {
+    return product.is_published;
+  }
+
+  if (statusFilter === "draft") {
+    return !product.is_published;
+  }
+
+  return true;
+}
+
+function matchesProductStockFilter(
+  product: StoreProductWithRelations,
+  stockFilter: ProductStockFilter,
+): boolean {
+  const stockState = getProductStockState(product.variants ?? []);
+
+  if (stockFilter === "in-stock") {
+    return !stockState.isOutOfStock && !stockState.isLowStock;
+  }
+
+  if (stockFilter === "low-stock") {
+    return stockState.isLowStock;
+  }
+
+  if (stockFilter === "out-of-stock") {
+    return stockState.isOutOfStock;
+  }
+
+  return true;
+}
+
+function sortAdminProducts(
+  products: StoreProductWithRelations[],
+  sort: ProductSortOption,
+): StoreProductWithRelations[] {
+  const sorted = [...products];
+
+  switch (sort) {
+    case "oldest":
+      return sorted.sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+    case "price-asc":
+      return sorted.sort((a, b) => Number(a.price) - Number(b.price));
+    case "price-desc":
+      return sorted.sort((a, b) => Number(b.price) - Number(a.price));
+    case "newest":
+    default:
+      return sorted.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+  }
+}
 
 function buildVariantGrid(
   colors: Color[],
@@ -58,13 +192,33 @@ function buildVariantGrid(
     ]),
   );
 
-  return colors.flatMap((color) =>
-    sizes.map((size) => ({
+  if (colors.length > 0 && sizes.length > 0) {
+    return colors.flatMap((color) =>
+      sizes.map((size) => ({
+        colorId: color.id,
+        sizeId: size.id,
+        inventory: inventoryByKey.get(`${color.id}:${size.id}`) ?? 0,
+      })),
+    );
+  }
+
+  if (colors.length > 0) {
+    return colors.map((color) => ({
       colorId: color.id,
+      sizeId: "",
+      inventory: inventoryByKey.get(`${color.id}:`) ?? 0,
+    }));
+  }
+
+  if (sizes.length > 0) {
+    return sizes.map((size) => ({
+      colorId: "",
       sizeId: size.id,
-      inventory: inventoryByKey.get(`${color.id}:${size.id}`) ?? 0,
-    })),
-  );
+      inventory: inventoryByKey.get(`:${size.id}`) ?? 0,
+    }));
+  }
+
+  return [];
 }
 
 function getVariantInventoryStatus(inventory: number) {
@@ -90,10 +244,10 @@ function ProductVariantInventoryEditor({
   variants: VariantEntry[];
   onChange: (variants: VariantEntry[]) => void;
 }) {
-  if (colors.length === 0 || sizes.length === 0) {
+  if (colors.length === 0 && sizes.length === 0) {
     return (
       <p className="font-body text-sm text-on-surface-variant">
-        Add at least one color and one size to manage variant inventory.
+        Add colors and/or sizes above to manage variant inventory.
       </p>
     );
   }
@@ -111,6 +265,114 @@ function ProductVariantInventoryEditor({
       ),
     );
   };
+
+  const renderInventoryInput = (colorId: string, sizeId: string) => {
+    const variant = variants.find(
+      (entry) => entry.colorId === colorId && entry.sizeId === sizeId,
+    );
+    const inventory = variant?.inventory ?? 0;
+    const status = getVariantInventoryStatus(inventory);
+
+    return (
+      <>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={inventory}
+          onChange={(event) =>
+            updateVariantInventory(
+              colorId,
+              sizeId,
+              Math.max(0, Math.floor(Number(event.target.value) || 0)),
+            )
+          }
+          className="font-body w-20 border border-outline-variant px-2 py-1.5 text-sm"
+        />
+        <p className={cn("font-body mt-1 text-[11px]", status.className)}>
+          {status.label}
+        </p>
+      </>
+    );
+  };
+
+  if (colors.length > 0 && sizes.length === 0) {
+    return (
+      <div className="overflow-x-auto border border-outline-variant">
+        <table className="min-w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-outline-variant bg-surface-container-low">
+              <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                Color
+              </th>
+              <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                Inventory
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {colors.map((color) => (
+              <tr
+                key={color.id}
+                className="border-b border-outline-variant last:border-b-0"
+              >
+                <td className="px-3 py-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-4 w-4 border border-outline-variant"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    <span className="font-body text-sm text-on-surface">
+                      {color.name}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-3 py-3 align-top">
+                  {renderInventoryInput(color.id, "")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (sizes.length > 0 && colors.length === 0) {
+    return (
+      <div className="overflow-x-auto border border-outline-variant">
+        <table className="min-w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-outline-variant bg-surface-container-low">
+              <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                Size
+              </th>
+              <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                Inventory
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sizes.map((size) => (
+              <tr
+                key={size.id}
+                className="border-b border-outline-variant last:border-b-0"
+              >
+                <td className="px-3 py-3">
+                  <span className="font-body text-sm text-on-surface">
+                    {size.label}
+                  </span>
+                </td>
+                <td className="px-3 py-3 align-top">
+                  {renderInventoryInput("", size.id)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-x-auto border border-outline-variant">
@@ -132,7 +394,10 @@ function ProductVariantInventoryEditor({
         </thead>
         <tbody>
           {colors.map((color) => (
-            <tr key={color.id} className="border-b border-outline-variant last:border-b-0">
+            <tr
+              key={color.id}
+              className="border-b border-outline-variant last:border-b-0"
+            >
               <td className="px-3 py-3">
                 <div className="flex items-center gap-2">
                   <span
@@ -144,44 +409,11 @@ function ProductVariantInventoryEditor({
                   </span>
                 </div>
               </td>
-              {sizes.map((size) => {
-                const variant = variants.find(
-                  (entry) =>
-                    entry.colorId === color.id && entry.sizeId === size.id,
-                );
-                const inventory = variant?.inventory ?? 0;
-                const status = getVariantInventoryStatus(inventory);
-
-                return (
-                  <td key={size.id} className="px-3 py-3 align-top">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={inventory}
-                      onChange={(event) =>
-                        updateVariantInventory(
-                          color.id,
-                          size.id,
-                          Math.max(
-                            0,
-                            Math.floor(Number(event.target.value) || 0),
-                          ),
-                        )
-                      }
-                      className="font-body w-20 border border-outline-variant px-2 py-1.5 text-sm"
-                    />
-                    <p
-                      className={cn(
-                        "font-body mt-1 text-[11px]",
-                        status.className,
-                      )}
-                    >
-                      {status.label}
-                    </p>
-                  </td>
-                );
-              })}
+              {sizes.map((size) => (
+                <td key={size.id} className="px-3 py-3 align-top">
+                  {renderInventoryInput(color.id, size.id)}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -339,11 +571,24 @@ function ProductImagesEditor({
   colors: Color[];
   onChange: (images: ImageEntry[]) => void;
 }) {
-  const { inputRef, uploadError, isUploading, openFilePicker, onFileChange } =
-    useAdminImageUploader({
-      onUploaded: (url) =>
-        onChange([...images, { url, alt: "", colorId: colors[0]?.id ?? "" }]),
-    });
+  const [imagePendingRemoval, setImagePendingRemoval] = useState<{
+    index: number;
+    url: string;
+  } | null>(null);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const [removeImageError, setRemoveImageError] = useState<string | null>(null);
+  const {
+    inputRef,
+    uploadError,
+    uploadSuccess,
+    isUploading,
+    maxFileSizeLabel,
+    openFilePicker,
+    onFileChange,
+  } = useProductImageUploader({
+    onUploaded: (url) =>
+      onChange([...images, { url, alt: "", colorId: colors[0]?.id ?? "" }]),
+  });
 
   const moveImage = (index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
@@ -357,6 +602,26 @@ function ProductImagesEditor({
     onChange(next);
   };
 
+  async function handleConfirmRemoveImage() {
+    if (!imagePendingRemoval) {
+      return;
+    }
+
+    setIsDeletingImage(true);
+    setRemoveImageError(null);
+
+    const result = await deleteProductImage(imagePendingRemoval.url);
+    if (result.error) {
+      setRemoveImageError(result.error);
+      setIsDeletingImage(false);
+      return;
+    }
+
+    onChange(images.filter((_, index) => index !== imagePendingRemoval.index));
+    setImagePendingRemoval(null);
+    setIsDeletingImage(false);
+  }
+
   return (
     <div>
       <input
@@ -368,14 +633,12 @@ function ProductImagesEditor({
       />
       <p className="font-body mb-3 text-xs leading-normal text-on-surface-variant">
         Add multiple images and assign each to a color. Selecting that color on
-        the product page shows its images.
+        the product page shows its images. Images are compressed and converted
+        to WebP on upload.
       </p>
       <div className="flex flex-wrap gap-3">
         {images.map((image, index) => (
-          <div
-            key={`${image.url}-${index}`}
-            className="w-28 space-y-1.5"
-          >
+          <div key={`${image.url}-${index}`} className="w-28 space-y-1.5">
             <div className="relative h-24 w-28 overflow-hidden border border-outline-variant">
               <Image
                 src={image.url}
@@ -399,7 +662,10 @@ function ProductImagesEditor({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onChange(images.filter((_, i) => i !== index))}
+                  onClick={() => {
+                    setRemoveImageError(null);
+                    setImagePendingRemoval({ index, url: image.url });
+                  }}
                   className="flex-1 bg-error py-0.5 text-[10px] text-on-primary"
                   aria-label="Remove image"
                 >
@@ -436,17 +702,69 @@ function ProductImagesEditor({
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={openFilePicker}
-        disabled={isUploading}
-        className="font-label mt-3 border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] leading-none text-on-surface"
-      >
-        {isUploading ? "Uploading..." : "Add Image"}
-      </button>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={openFilePicker}
+          disabled={isUploading}
+          className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] leading-none text-on-surface disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isUploading ? "Uploading..." : "Add Image"}
+        </button>
+        <span className="font-body text-xs text-on-surface-variant">
+          Max {maxFileSizeLabel}
+        </span>
+      </div>
+      {isUploading ? (
+        <p className="font-body mt-2 text-sm text-on-surface-variant">
+          Compressing image and uploading to storage...
+        </p>
+      ) : null}
+      {uploadSuccess ? (
+        <p className="font-body mt-2 text-sm text-green-600">{uploadSuccess}</p>
+      ) : null}
       {uploadError ? (
         <p className="font-body mt-2 text-sm text-error">{uploadError}</p>
       ) : null}
+      {removeImageError ? (
+        <p className="font-body mt-2 text-sm text-error">{removeImageError}</p>
+      ) : null}
+
+      <Popup
+        open={imagePendingRemoval !== null}
+        onClose={() => {
+          if (!isDeletingImage) {
+            setImagePendingRemoval(null);
+          }
+        }}
+        title="Delete Product Image"
+        description={
+          imagePendingRemoval &&
+          isManagedProductImageUrl(imagePendingRemoval.url)
+            ? "This image will be permanently deleted from storage. This action cannot be undone."
+            : "Remove this image from the product? External images will only be removed from this product."
+        }
+        size="sm"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isDeletingImage}
+              onClick={() => setImagePendingRemoval(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isDeletingImage}
+              onClick={handleConfirmRemoveImage}
+            >
+              {isDeletingImage ? "Deleting..." : "Delete Image"}
+            </Button>
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -490,7 +808,8 @@ function ProductColorsEditor({
       {allColors.length > 0 ? (
         <div>
           <p className="font-body mb-2 text-xs leading-normal text-on-surface-variant">
-            Select colors for this product.
+            Select colors for this product. Leave empty if this product has no
+            color options.
           </p>
           <div className="flex flex-wrap gap-2">
             {allColors.map((color) => {
@@ -593,7 +912,8 @@ function ProductSizesEditor({
       {allSizes.length > 0 ? (
         <div>
           <p className="font-body mb-2 text-xs leading-normal text-on-surface-variant">
-            Select sizes for this product.
+            Select sizes for this product. Leave empty if this product has no
+            size options.
           </p>
           <div className="flex flex-wrap gap-2">
             {allSizes.map((size) => {
@@ -645,7 +965,9 @@ function ProductSizesEditor({
             <input
               type="text"
               value={newSizeLabel}
-              onChange={(event) => setNewSizeLabel(event.target.value.toUpperCase())}
+              onChange={(event) =>
+                setNewSizeLabel(event.target.value.toUpperCase())
+              }
               placeholder="e.g. XL"
               className="font-body min-w-[8rem] flex-1 border border-outline-variant px-3 py-2 text-sm uppercase"
             />
@@ -658,7 +980,9 @@ function ProductSizesEditor({
               {isAdding ? "Adding..." : "Add"}
             </button>
           </div>
-          {error ? <p className="font-body text-sm text-error">{error}</p> : null}
+          {error ? (
+            <p className="font-body text-sm text-error">{error}</p>
+          ) : null}
         </div>
       ) : (
         <button
@@ -790,7 +1114,9 @@ function ProductBrandsEditor({
               {isAdding ? "Adding..." : "Add"}
             </button>
           </div>
-          {error ? <p className="font-body text-sm text-error">{error}</p> : null}
+          {error ? (
+            <p className="font-body text-sm text-error">{error}</p>
+          ) : null}
         </div>
       ) : (
         <button
@@ -812,6 +1138,7 @@ export function ProductForm({
   allBrands,
   initial,
   onCancel,
+  onSuccess,
   redirectOnSuccess,
 }: {
   categoryTree: CategoryTreeNode[];
@@ -820,6 +1147,7 @@ export function ProductForm({
   allBrands: Brand[];
   initial?: StoreProductWithRelations;
   onCancel?: () => void;
+  onSuccess?: () => void;
   redirectOnSuccess?: string;
 }) {
   const router = useRouter();
@@ -847,6 +1175,10 @@ export function ProductForm({
   const [discountType, setDiscountType] = useState<DiscountType | "none">(
     initial?.discount_type ?? "none",
   );
+  const [publishStatus, setPublishStatus] = useState<"true" | "false">(
+    initial?.is_published === false ? "false" : "true",
+  );
+  const [selectedBadge, setSelectedBadge] = useState(initial?.badge ?? "");
   const [paymentMethods, setPaymentMethods] = useState({
     card: true,
     cashOnDelivery: true,
@@ -854,48 +1186,85 @@ export function ProductForm({
   const [variants, setVariants] = useState<VariantEntry[]>(() =>
     initial
       ? initial.variants.map((variant) => ({
-          colorId: variant.color_id,
-          sizeId: variant.size_id,
+          colorId: variant.color_id ?? "",
+          sizeId: variant.size_id ?? "",
           inventory: variant.inventory,
         }))
       : [],
   );
   const categoryOptions = flattenCategoryTreeOptions(categoryTree);
+  const badgeOptions =
+    initial?.badge &&
+    !PRODUCT_BADGE_OPTIONS.some((option) => option.value === initial.badge)
+      ? [
+          ...PRODUCT_BADGE_OPTIONS,
+          { value: initial.badge, label: initial.badge },
+        ]
+      : PRODUCT_BADGE_OPTIONS;
 
   useEffect(() => {
     setVariants((current) => buildVariantGrid(colors, sizes, current));
   }, [colors, sizes]);
 
   useEffect(() => {
-    if (state?.success && !initial) {
-      if (redirectOnSuccess) {
-        router.push(redirectOnSuccess);
-        return;
-      }
-
-      setImages([]);
-      setColors([]);
-      setSizes([]);
-      setSelectedBrand(
-        allBrands.find((brand) => brand.name.toUpperCase() === "VELVORZ") ??
-          allBrands[0] ??
-          null,
-      );
-      setSelectedCategoryId("");
-      setDiscountType("none");
-      setPaymentMethods({ card: true, cashOnDelivery: true });
-      setVariants([]);
+    if (!state?.success) {
+      return;
     }
-  }, [allBrands, initial, redirectOnSuccess, router, state?.success]);
+
+    if (initial) {
+      router.refresh();
+      onSuccess?.();
+      return;
+    }
+
+    if (redirectOnSuccess) {
+      router.push(redirectOnSuccess);
+      return;
+    }
+
+    setImages([]);
+    setColors([]);
+    setSizes([]);
+    setSelectedBrand(
+      allBrands.find((brand) => brand.name.toUpperCase() === "VELVORZ") ??
+        allBrands[0] ??
+        null,
+    );
+    setSelectedCategoryId("");
+    setDiscountType("none");
+    setPublishStatus("true");
+    setSelectedBadge("");
+    setPaymentMethods({ card: true, cashOnDelivery: true });
+    setVariants([]);
+  }, [
+    allBrands,
+    initial,
+    onSuccess,
+    redirectOnSuccess,
+    router,
+    state?.success,
+  ]);
 
   return (
     <form action={formAction} className="space-y-4">
       {initial ? <input type="hidden" name="id" value={initial.id} /> : null}
       <input type="hidden" name="category_id" value={selectedCategoryId} />
       <input type="hidden" name="images_json" value={JSON.stringify(images)} />
-      <input type="hidden" name="colors_json" value={JSON.stringify(colors.map((color) => ({ id: color.id })))} />
-      <input type="hidden" name="sizes_json" value={JSON.stringify(sizes.map((size) => ({ id: size.id })))} />
-      <input type="hidden" name="variants_json" value={JSON.stringify(variants)} />
+      <input
+        type="hidden"
+        name="colors_json"
+        value={JSON.stringify(colors.map((color) => ({ id: color.id })))}
+      />
+      <input
+        type="hidden"
+        name="sizes_json"
+        value={JSON.stringify(sizes.map((size) => ({ id: size.id })))}
+      />
+      <input
+        type="hidden"
+        name="variants_json"
+        value={JSON.stringify(variants)}
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
@@ -993,7 +1362,7 @@ export function ProductForm({
 
       <div>
         <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-          Colors
+          Colors <span className="font-normal normal-case">(optional)</span>
         </label>
         <ProductColorsEditor
           colors={colors}
@@ -1004,7 +1373,7 @@ export function ProductForm({
 
       <div>
         <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-          Sizes
+          Sizes <span className="font-normal normal-case">(optional)</span>
         </label>
         <ProductSizesEditor
           sizes={sizes}
@@ -1017,7 +1386,11 @@ export function ProductForm({
         <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
           Product Images
         </label>
-        <ProductImagesEditor images={images} colors={colors} onChange={setImages} />
+        <ProductImagesEditor
+          images={images}
+          colors={colors}
+          onChange={setImages}
+        />
       </div>
 
       <div>
@@ -1057,26 +1430,22 @@ export function ProductForm({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-            Badge (optional)
-          </label>
-          <input
-            name="badge"
-            placeholder="e.g. NEW or PRE ORDER"
-            defaultValue={initial?.badge ?? ""}
-            className="font-body w-full border border-outline-variant px-3 py-2 text-sm"
-          />
-        </div>
-        <label className="flex items-center gap-2 self-end pb-2">
-          <input
-            type="checkbox"
-            name="is_published"
-            defaultChecked={initial?.is_published ?? true}
-          />
-          <span className="font-body text-sm text-on-surface">Published</span>
+      <div>
+        <label className="mb-2 block font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+          Badge (optional)
         </label>
+        <select
+          name="badge"
+          value={selectedBadge}
+          onChange={(event) => setSelectedBadge(event.target.value)}
+          className="font-body w-full border border-outline-variant px-3 py-2 text-sm"
+        >
+          {badgeOptions.map((option) => (
+            <option key={option.value || "none"} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
@@ -1129,9 +1498,9 @@ export function ProductForm({
           onChange={setVariants}
         />
         <p className="font-body mt-2 text-xs leading-normal text-on-surface-variant">
-          Set stock for each color and size combination. Variants at 10 or less
-          show &quot;Low Stock&quot; on the storefront. At 0, that variant is
-          out of stock.
+          Set stock per color, per size, or per color and size combination.
+          Variants at 10 or less show &quot;Low Stock&quot; on the storefront.
+          At 0, that variant is out of stock.
         </p>
       </div>
 
@@ -1141,6 +1510,44 @@ export function ProductForm({
       {state?.success ? (
         <p className="font-body text-sm text-primary">{state.success}</p>
       ) : null}
+
+      <div>
+        <p className="mb-2 font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+          Status
+        </p>
+        <input type="hidden" name="is_published" value={publishStatus} />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setPublishStatus("true")}
+            className={cn(
+              "font-label border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.15em] leading-none transition-colors",
+              publishStatus === "true"
+                ? "border-green-600/30 bg-green-600/10 text-green-600"
+                : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-green-600/30",
+            )}
+            aria-pressed={publishStatus === "true"}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            onClick={() => setPublishStatus("false")}
+            className={cn(
+              "font-label border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.15em] leading-none transition-colors",
+              publishStatus === "false"
+                ? "border-blue-600/30 bg-blue-600/10 text-blue-600"
+                : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-blue-600/30",
+            )}
+            aria-pressed={publishStatus === "false"}
+          >
+            Draft
+          </button>
+        </div>
+        <p className="font-body mt-2 text-xs leading-normal text-on-surface-variant">
+          Draft products are hidden from the shop until set to Active.
+        </p>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -1190,6 +1597,9 @@ function ProductRow({
     product.discount_type,
     product.discount_value ?? 0,
   );
+  const stockState = getProductStockState(product.variants ?? []);
+  const stockSummary = getProductStockSummary(product);
+  const categoryLabel = getCategoryLabel(categoryTree, product.category_id);
 
   useEffect(() => {
     if (deleteState?.success) {
@@ -1202,59 +1612,120 @@ function ProductRow({
   }
 
   return (
-    <li className="rounded-sm border border-outline-variant p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          {image ? (
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden border border-outline-variant">
-              <Image
-                src={image}
-                alt={product.name}
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
-            </div>
-          ) : null}
-          <div>
-            <p className="font-label text-sm font-bold uppercase text-on-surface">
-              {product.name}
-            </p>
-            <p className="font-body mt-1 text-xs text-on-surface-variant">
-              {product.category?.name ?? "Uncategorized"} ·{" "}
-              {pricing.hasDiscount ? (
-                <>
-                  <span className="line-through">{formatPrice(product.base_price)}</span>{" "}
-                  {formatPrice(product.price)}
-                </>
-              ) : (
-                formatPrice(product.price)
-              )}
-              {!product.is_published ? " · Draft" : ""}
-            </p>
+    <li className="rounded-sm border border-outline-variant p-3 md:p-3">
+      <div className="flex items-start gap-3 md:items-center md:gap-4">
+        {image ? (
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden border border-outline-variant md:h-12 md:w-12">
+            <Image
+              src={image}
+              alt={product.name}
+              fill
+              sizes="56px"
+              className="object-cover"
+            />
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsEditing((open) => !open)}
-            aria-label={isEditing ? `Close ${product.name} editor` : `Edit ${product.name}`}
-            className="inline-flex h-7 w-7 items-center justify-center text-on-surface transition-opacity hover:opacity-70"
-          >
-            {isEditing ? (
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : (
-              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowDeleteConfirm(true)}
-            aria-label={`Delete ${product.name}`}
-            className="inline-flex h-7 w-7 items-center justify-center text-error transition-opacity hover:opacity-70"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+        ) : (
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center border border-outline-variant bg-surface-container-low md:h-12 md:w-12">
+            <span className="font-label text-[8px] font-bold uppercase tracking-[0.1em] text-on-surface-variant">
+              No image
+            </span>
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3 md:items-center">
+            <div className="min-w-0 flex-1 space-y-1.5 md:space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-label text-sm font-bold uppercase text-on-surface">
+                  {product.name}
+                </p>
+                {product.badge ? (
+                  <span className="font-label border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-primary">
+                    {product.badge}
+                  </span>
+                ) : null}
+                <span
+                  className={cn(
+                    "font-label border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                    product.is_published
+                      ? "border-green-600/30 bg-green-600/10 text-green-600"
+                      : "border-blue-600/30 bg-blue-600/10 text-blue-600",
+                  )}
+                >
+                  {product.is_published ? "Active" : "Draft"}
+                </span>
+                <span
+                  className={cn(
+                    "font-label border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                    stockSummary.className,
+                  )}
+                >
+                  {stockSummary.label}
+                </span>
+              </div>
+
+              <div className="grid gap-x-4 gap-y-0.5 text-xs md:grid-cols-2 lg:grid-cols-4">
+                <p className="font-body text-on-surface-variant">
+                  <span className="text-on-surface">Category:</span>{" "}
+                  {categoryLabel}
+                </p>
+                <p className="font-body text-on-surface-variant">
+                  <span className="text-on-surface">Brand:</span>{" "}
+                  {product.brand || "—"}
+                </p>
+                <p className="font-body text-on-surface-variant">
+                  <span className="text-on-surface">Inventory:</span>{" "}
+                  {stockState.totalInventory} unit
+                  {stockState.totalInventory === 1 ? "" : "s"}
+                  {product.variants.length > 0
+                    ? ` · ${product.variants.length} variant${
+                        product.variants.length === 1 ? "" : "s"
+                      }`
+                    : ""}
+                </p>
+                <p className="font-body text-on-surface">
+                  <span className="text-on-surface-variant">Price:</span>{" "}
+                  {pricing.hasDiscount ? (
+                    <>
+                      <span className="line-through text-on-surface-variant">
+                        {formatPrice(product.base_price)}
+                      </span>{" "}
+                      {formatPrice(product.price)}
+                    </>
+                  ) : (
+                    formatPrice(product.price)
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditing((open) => !open)}
+                aria-label={
+                  isEditing
+                    ? `Close ${product.name} editor`
+                    : `Edit ${product.name}`
+                }
+                className="inline-flex h-7 w-7 items-center justify-center text-on-surface transition-opacity hover:opacity-70"
+              >
+                {isEditing ? (
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                aria-label={`Delete ${product.name}`}
+                className="inline-flex h-7 w-7 items-center justify-center text-error transition-opacity hover:opacity-70"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1270,7 +1741,7 @@ function ProductRow({
           }
         }}
         title="Delete Product"
-        description={`Are you sure you want to delete "${product.name}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${product.name}"? This will permanently delete the product and all uploaded images from storage. This action cannot be undone.`}
         size="sm"
         footer={
           <div className="flex flex-wrap justify-end gap-2">
@@ -1306,6 +1777,7 @@ function ProductRow({
             allBrands={allBrands}
             initial={product}
             onCancel={() => setIsEditing(false)}
+            onSuccess={() => setIsEditing(false)}
           />
         </div>
       ) : null}
@@ -1362,6 +1834,93 @@ export function ProductsAdmin({
   allSizes,
   allBrands,
 }: ProductsAdminProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<ProductStatusFilter>("all");
+  const [stockFilter, setStockFilter] = useState<ProductStockFilter>("all");
+  const [sortFilter, setSortFilter] = useState<ProductSortOption>("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const categoryOptions = useMemo(
+    () => flattenCategoryTreeOptions(categoryTree),
+    [categoryTree],
+  );
+
+  const filteredProducts = useMemo(() => {
+    const filtered = products.filter((product) => {
+      if (!matchesProductSearch(product, searchQuery, categoryTree)) {
+        return false;
+      }
+
+      if (categoryFilter !== "all" && product.category_id !== categoryFilter) {
+        return false;
+      }
+
+      if (!matchesProductStatusFilter(product, statusFilter)) {
+        return false;
+      }
+
+      if (!matchesProductStockFilter(product, stockFilter)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return sortAdminProducts(filtered, sortFilter);
+  }, [
+    products,
+    searchQuery,
+    categoryTree,
+    categoryFilter,
+    statusFilter,
+    stockFilter,
+    sortFilter,
+  ]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE),
+  );
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return filteredProducts.slice(start, start + PRODUCTS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  const rangeStart =
+    filteredProducts.length === 0
+      ? 0
+      : (currentPage - 1) * PRODUCTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(
+    currentPage * PRODUCTS_PER_PAGE,
+    filteredProducts.length,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter, statusFilter, stockFilter, sortFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    categoryFilter !== "all" ||
+    statusFilter !== "all" ||
+    stockFilter !== "all";
+
+  function clearFilters() {
+    setSearchQuery("");
+    setCategoryFilter("all");
+    setStatusFilter("all");
+    setStockFilter("all");
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1386,26 +1945,201 @@ export function ProductsAdmin({
       {!schemaStatus.ready ? <ProductsSchemaBanner /> : null}
 
       <section>
-        <h2 className="font-label text-xs font-bold uppercase tracking-[0.15em] text-on-surface">
-          All Products
-        </h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="font-label text-xs font-bold uppercase tracking-[0.15em] text-on-surface">
+            All Products
+          </h2>
+          <p className="font-body text-xs text-on-surface-variant">
+            {filteredProducts.length === 0
+              ? `0 of ${products.length} product${products.length === 1 ? "" : "s"}`
+              : `Showing ${rangeStart}-${rangeEnd} of ${filteredProducts.length} product${
+                  filteredProducts.length === 1 ? "" : "s"
+                }`}
+          </p>
+        </div>
+
+        {products.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-end gap-2 md:grid md:grid-cols-2 md:gap-3 xl:grid-cols-6">
+              <label className="block min-w-0 flex-1 md:col-span-2 xl:col-span-2">
+                <span className="mb-2 block font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                  Search
+                </span>
+                <div className="flex items-center gap-2 border border-outline-variant/50 px-3 py-2">
+                  <SearchIcon
+                    className="h-4 w-4 shrink-0 text-on-surface-variant"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by name, brand, or category..."
+                    className="font-body min-w-0 flex-1 bg-transparent text-sm text-on-surface outline-none placeholder:text-on-surface-variant"
+                  />
+                </div>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters((open) => !open)}
+                aria-expanded={showMobileFilters}
+                className="inline-flex shrink-0 items-center gap-2 border border-outline-variant/50 px-3 py-2 font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface md:hidden"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                Filters
+                {hasActiveFilters ? (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+                ) : null}
+              </button>
+
+              <div
+                className={cn(
+                  "grid w-full basis-full gap-3",
+                  showMobileFilters ? "grid" : "hidden",
+                  "md:contents",
+                )}
+              >
+                <label className="block">
+                  <span className="mb-2 block font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                    Category
+                  </span>
+                  <select
+                    value={categoryFilter}
+                    onChange={(event) => setCategoryFilter(event.target.value)}
+                    className="font-body w-full border border-outline-variant/50 px-3 py-2 text-sm"
+                  >
+                    <option value="all">All categories</option>
+                    {categoryOptions.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                    Status
+                  </span>
+                  <select
+                    value={statusFilter}
+                    onChange={(event) =>
+                      setStatusFilter(event.target.value as ProductStatusFilter)
+                    }
+                    className="font-body w-full border border-outline-variant/50 px-3 py-2 text-sm"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="active">Active</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                    Stock
+                  </span>
+                  <select
+                    value={stockFilter}
+                    onChange={(event) =>
+                      setStockFilter(event.target.value as ProductStockFilter)
+                    }
+                    className="font-body w-full border border-outline-variant/50 px-3 py-2 text-sm"
+                  >
+                    <option value="all">All stock levels</option>
+                    <option value="in-stock">In stock</option>
+                    <option value="low-stock">Low stock</option>
+                    <option value="out-of-stock">Out of stock</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                    Sort by
+                  </span>
+                  <select
+                    value={sortFilter}
+                    onChange={(event) =>
+                      setSortFilter(event.target.value as ProductSortOption)
+                    }
+                    className="font-body w-full border border-outline-variant/50 px-3 py-2 text-sm"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="price-asc">Lowest price</option>
+                    <option value="price-desc">Highest price</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {hasActiveFilters ? (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant hover:text-on-surface"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {products.length === 0 ? (
           <p className="font-body mt-4 text-sm text-on-surface-variant">
             No products yet.
           </p>
+        ) : filteredProducts.length === 0 ? (
+          <p className="font-body mt-4 text-sm text-on-surface-variant">
+            No products match your search or filters.
+          </p>
         ) : (
-          <ul className="mt-4 space-y-4">
-            {products.map((product) => (
-              <ProductRow
-                key={product.id}
-                product={product}
-                categoryTree={categoryTree}
-                allColors={allColors}
-                allSizes={allSizes}
-                allBrands={allBrands}
-              />
-            ))}
-          </ul>
+          <>
+            <ul className="mt-6 space-y-4">
+              {paginatedProducts.map((product) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  categoryTree={categoryTree}
+                  allColors={allColors}
+                  allSizes={allSizes}
+                  allBrands={allBrands}
+                />
+              ))}
+            </ul>
+
+            {totalPages > 1 ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="font-body text-xs text-on-surface-variant">
+                  Page {currentPage} of {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(1, page - 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.min(totalPages, page + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="font-label border border-outline-variant px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
       </section>
     </div>

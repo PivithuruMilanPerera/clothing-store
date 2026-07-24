@@ -66,7 +66,7 @@ export function ProductCreateAdmin({
         </p>
       </div>
 
-      <section className="rounded-sm border border-outline-variant bg-surface-container-lowest p-5 md:p-6">
+      <section className="rounded-sm border border-outline-variant/50 bg-surface-container-lowest p-3 md:p-4">
         <ProductForm
           categoryTree={categoryTree}
           allColors={allColors}

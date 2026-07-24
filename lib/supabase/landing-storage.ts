@@ -1,63 +1,46 @@
-import path from "node:path";
+import "server-only";
+
+import { prepareImageForWebpUpload } from "@/lib/image/process-image";
+import {
+  LANDING_BUCKET,
+  getLandingImageStoragePath,
+  validateLandingImageFile,
+} from "@/lib/landing-image-validation";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const LANDING_BUCKET = "landing";
+export { LANDING_BUCKET } from "@/lib/landing-image-validation";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
+export type LandingImageUploadResult = {
+  url: string;
+  originalSize: number;
+  compressedSize: number;
+};
 
-function getExtension(file: File) {
-  const fromName = path.extname(file.name).toLowerCase();
-  if (fromName) return fromName;
-
-  switch (file.type) {
-    case "image/jpeg":
-      return ".jpg";
-    case "image/png":
-      return ".png";
-    case "image/webp":
-      return ".webp";
-    case "image/gif":
-      return ".gif";
-    default:
-      return ".png";
-  }
-}
-
-export function validateLandingImageFile(file: File): string | null {
-  if (!(file instanceof File) || file.size === 0) {
-    return "Please choose an image file to upload.";
-  }
-
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return "Only JPG, PNG, WebP, and GIF images are allowed.";
-  }
-
-  if (file.size > MAX_FILE_SIZE) {
-    return "Image must be 5 MB or smaller.";
-  }
-
-  return null;
-}
-
-export async function uploadLandingImageToStorage(file: File): Promise<string> {
+export async function uploadLandingImageToStorage(
+  file: File,
+): Promise<LandingImageUploadResult> {
   const validationError = validateLandingImageFile(file);
   if (validationError) {
     throw new Error(validationError);
   }
 
-  const filename = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}${getExtension(file)}`;
+  const originalBuffer = Buffer.from(await file.arrayBuffer());
+  const webpBuffer = await prepareImageForWebpUpload(originalBuffer, {
+    mimeType: file.type,
+  });
+  const filename = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webp`;
 
-  return uploadLandingBufferToStorage(
+  const url = await uploadLandingBufferToStorage(
     filename,
-    Buffer.from(await file.arrayBuffer()),
-    file.type,
+    webpBuffer,
+    "image/webp",
   );
+
+  return {
+    url,
+    originalSize: originalBuffer.length,
+    compressedSize: webpBuffer.length,
+  };
 }
 
 export async function uploadLandingBufferToStorage(
@@ -82,4 +65,27 @@ export async function uploadLandingBufferToStorage(
 
   const { data } = supabase.storage.from(LANDING_BUCKET).getPublicUrl(filename);
   return data.publicUrl;
+}
+
+export async function deleteLandingImagesFromStorage(
+  urls: string[],
+): Promise<void> {
+  const paths = [
+    ...new Set(
+      urls
+        .map((url) => getLandingImageStoragePath(url))
+        .filter((path): path is string => Boolean(path)),
+    ),
+  ];
+
+  if (paths.length === 0) {
+    return;
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.storage.from(LANDING_BUCKET).remove(paths);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
