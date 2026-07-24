@@ -80,6 +80,7 @@ function landingToShopProduct(
   return {
     ...product,
     category,
+    categorySlugs: [category],
     sizes: ["S", "M", "L", "XL"],
     colors: ["black"],
     createdAt: "2024-06-01",
