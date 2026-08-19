@@ -1,6 +1,9 @@
 import "server-only";
 
-import { prepareImageForWebpUpload } from "@/lib/image/process-image";
+import {
+  createWebpBlob,
+  prepareImageForWebpUpload,
+} from "@/lib/image/process-image";
 import {
   PRODUCT_IMG_BUCKET,
   getProductImageStoragePath,
@@ -22,7 +25,7 @@ export async function uploadProductImageToStorage(
     throw new Error(validationError);
   }
 
-  const originalBuffer = Buffer.from(await file.arrayBuffer());
+  const originalBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
   const webpBuffer = await prepareImageForWebpUpload(originalBuffer, {
     mimeType: file.type,
   });
@@ -32,7 +35,7 @@ export async function uploadProductImageToStorage(
 
   const { error } = await supabase.storage
     .from(PRODUCT_IMG_BUCKET)
-    .upload(filename, webpBuffer, {
+    .upload(filename, createWebpBlob(webpBuffer), {
       contentType: "image/webp",
       cacheControl: "3600",
       upsert: false,

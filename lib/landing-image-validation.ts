@@ -6,10 +6,32 @@ const LANDING_IMAGE_PUBLIC_PATH = `/storage/v1/object/public/${LANDING_BUCKET}/`
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
+  "image/jpg",
   "image/png",
   "image/webp",
   "image/gif",
 ]);
+
+function getFileImageType(file: File): string | null {
+  if (ALLOWED_TYPES.has(file.type)) {
+    return file.type === "image/jpg" ? "image/jpeg" : file.type;
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    default:
+      return null;
+  }
+}
 
 export function getLandingImageStoragePath(url: string): string | null {
   try {
@@ -38,7 +60,7 @@ export function validateLandingImageFile(file: File): string | null {
     return "Please choose an image file to upload.";
   }
 
-  if (!ALLOWED_TYPES.has(file.type)) {
+  if (!getFileImageType(file)) {
     return "Only JPG, PNG, WebP, and GIF images are allowed.";
   }
 
