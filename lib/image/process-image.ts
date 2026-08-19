@@ -2,8 +2,9 @@ import "server-only";
 
 import sharp from "sharp";
 
-const WEBP_QUALITY = 92;
+const WEBP_QUALITY = 82;
 const WEBP_SKIP_MAX_SIZE = 120 * 1024;
+const MAX_IMAGE_DIMENSION = 2048;
 
 function isWebpBuffer(buffer: Buffer): boolean {
   return (
@@ -21,22 +22,49 @@ function shouldSkipWebpProcessing(
   return isWebp && buffer.length <= WEBP_SKIP_MAX_SIZE;
 }
 
+function copyToPackedBuffer(input: Buffer): Buffer {
+  return Buffer.from(input);
+}
+
+export function createWebpBlob(buffer: Buffer): Blob {
+  return new Blob([new Uint8Array(buffer)], { type: "image/webp" });
+}
+
 export async function prepareImageForWebpUpload(
   input: Buffer,
   options?: { mimeType?: string },
 ): Promise<Buffer> {
   if (shouldSkipWebpProcessing(input, options?.mimeType)) {
-    return input;
+    return copyToPackedBuffer(input);
   }
 
-  return sharp(input)
-    .rotate()
-    .webp({
-      quality: WEBP_QUALITY,
-      effort: 6,
-      smartSubsample: true,
+  try {
+    const output = await sharp(copyToPackedBuffer(input), {
+      failOn: "none",
+      animated: false,
     })
-    .toBuffer();
+      .rotate()
+      .resize({
+        width: MAX_IMAGE_DIMENSION,
+        height: MAX_IMAGE_DIMENSION,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({
+        quality: WEBP_QUALITY,
+        effort: 4,
+        smartSubsample: true,
+      })
+      .toBuffer();
+
+    return copyToPackedBuffer(output);
+  } catch (error) {
+    const detail =
+      error instanceof Error ? error.message : "unknown processing error";
+    throw new Error(
+      `This image could not be compressed. Try a JPG, PNG, or WebP under 5 MB. (${detail})`,
+    );
+  }
 }
 
 export async function compressImageToWebp(input: Buffer): Promise<Buffer> {

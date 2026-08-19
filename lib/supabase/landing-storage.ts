@@ -1,6 +1,9 @@
 import "server-only";
 
-import { prepareImageForWebpUpload } from "@/lib/image/process-image";
+import {
+  createWebpBlob,
+  prepareImageForWebpUpload,
+} from "@/lib/image/process-image";
 import {
   LANDING_BUCKET,
   getLandingImageStoragePath,
@@ -24,7 +27,7 @@ export async function uploadLandingImageToStorage(
     throw new Error(validationError);
   }
 
-  const originalBuffer = Buffer.from(await file.arrayBuffer());
+  const originalBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
   const webpBuffer = await prepareImageForWebpUpload(originalBuffer, {
     mimeType: file.type,
   });
@@ -51,9 +54,12 @@ export async function uploadLandingBufferToStorage(
 ): Promise<string> {
   const supabase = createAdminClient();
 
+  const body =
+    contentType === "image/webp" ? createWebpBlob(buffer) : buffer;
+
   const { error } = await supabase.storage
     .from(LANDING_BUCKET)
-    .upload(filename, buffer, {
+    .upload(filename, body, {
       contentType,
       cacheControl: "3600",
       upsert: options?.upsert ?? false,
