@@ -6,6 +6,19 @@ import {
   sanitizeRedirectPath,
 } from "@/lib/auth";
 
+async function safeIsAdmin(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<boolean> {
+  try {
+    return await isAdminUser(supabase, userId);
+  } catch {
+    // DB queries in edge middleware can fail in deployment environments.
+    // Route-level requireAdmin() is the authoritative guard.
+    return false;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -25,7 +38,14 @@ export async function proxy(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        supabaseResponse = NextResponse.next({ request });
+        // Preserve the existing response (and its cookies/headers) when
+        // Supabase refreshes the session. Creating a fresh NextResponse here
+        // would drop any cookies already set on supabaseResponse.
+        const next = NextResponse.next({ request });
+        supabaseResponse.cookies.getAll().forEach((cookie) => {
+          next.cookies.set(cookie.name, cookie.value);
+        });
+        supabaseResponse = next;
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, options);
         });
@@ -57,7 +77,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(adminLoginUrl);
     }
 
-    const isAdmin = await isAdminUser(supabase, user.id);
+    const isAdmin = await safeIsAdmin(supabase, user.id);
 
     if (!isAdmin) {
       const adminLoginUrl = request.nextUrl.clone();
@@ -68,7 +88,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isAdminLoginRoute && user) {
-    const isAdmin = await isAdminUser(supabase, user.id);
+    const isAdmin = await safeIsAdmin(supabase, user.id);
 
     if (isAdmin) {
       const adminUrl = request.nextUrl.clone();
@@ -88,7 +108,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const isAdmin = await isAdminUser(supabase, user.id);
+    const isAdmin = await safeIsAdmin(supabase, user.id);
 
     if (isAdmin) {
       const adminUrl = request.nextUrl.clone();
@@ -99,7 +119,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isAuthRoute && user) {
-    const isAdmin = await isAdminUser(supabase, user.id);
+    const isAdmin = await safeIsAdmin(supabase, user.id);
     const accountUrl = request.nextUrl.clone();
     accountUrl.pathname = isAdmin ? "/admin" : "/account";
     accountUrl.search = "";
