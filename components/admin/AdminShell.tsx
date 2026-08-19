@@ -37,8 +37,9 @@ function SidebarInner({
           <Image
             src={logo}
             alt="Velvorz"
+            width={112}
             height={28}
-            className="h-7 w-auto object-contain brightness-0 invert"
+            className="w-28 h-auto object-contain brightness-0 invert"
           />
         </Link>
         {onClose && (
@@ -176,8 +177,9 @@ export function AdminShell({
             <Image
               src={logo}
               alt="Velvorz"
+              width={104}
               height={26}
-              className="h-[26px] w-auto object-contain"
+              className="w-26 h-auto object-contain"
             />
           </Link>
 

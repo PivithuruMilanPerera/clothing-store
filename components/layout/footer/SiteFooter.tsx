@@ -17,8 +17,9 @@ export function SiteFooter() {
               <Image
                 src={logo}
                 alt="Velvorz"
+                width={144}
                 height={36}
-                className="h-12 w-auto object-contain brightness-0 invert md:h-14"
+                className="w-36 h-auto object-contain brightness-0 invert md:w-42"
               />
             </Link>
             <p className="text-inverse-primary pt-3 pr-5">

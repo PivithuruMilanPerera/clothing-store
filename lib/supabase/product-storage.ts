@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  createWebpBlob,
   prepareImageForWebpUpload,
 } from "@/lib/image/process-image";
 import {
@@ -34,7 +35,7 @@ export async function uploadProductImageToStorage(
 
   const { error } = await supabase.storage
     .from(PRODUCT_IMG_BUCKET)
-    .upload(filename, webpBuffer, {
+    .upload(filename, createWebpBlob(webpBuffer), {
       contentType: "image/webp",
       cacheControl: "3600",
       upsert: false,

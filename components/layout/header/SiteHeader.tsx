@@ -43,10 +43,11 @@ export async function SiteHeader({ variant = "solid", className }: SiteHeaderPro
             <Image
               src={logo}
               alt="Velvorz"
+              width={160}
               height={40}
               loading="eager"
               className={cn(
-                "h-10 w-auto object-contain md:h-12",
+                "w-40 h-auto object-contain md:w-48",
                 isTransparent && "brightness-0 invert",
               )}
             />
