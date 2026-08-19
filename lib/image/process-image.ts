@@ -26,10 +26,6 @@ function copyToPackedBuffer(input: Buffer): Buffer {
   return Buffer.from(input);
 }
 
-export function createWebpBlob(buffer: Buffer): Blob {
-  return new Blob([new Uint8Array(buffer)], { type: "image/webp" });
-}
-
 export async function prepareImageForWebpUpload(
   input: Buffer,
   options?: { mimeType?: string },
