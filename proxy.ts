@@ -6,6 +6,24 @@ import {
   sanitizeRedirectPath,
 } from "@/lib/auth";
 
+async function safeIsAdmin(
+  getUserId: () => string,
+  check: () => Promise<boolean>,
+): Promise<boolean> {
+  const userId = getUserId();
+  if (!userId) {
+    return false;
+  }
+
+  try {
+    return await check();
+  } catch {
+    // Avoid hard middleware failures in deployment/edge.
+    // Route-level guards (requireAdmin) remain the source of truth.
+    return false;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -56,19 +74,13 @@ export async function proxy(request: NextRequest) {
       );
       return NextResponse.redirect(adminLoginUrl);
     }
-
-    const isAdmin = await isAdminUser(supabase, user.id);
-
-    if (!isAdmin) {
-      const adminLoginUrl = request.nextUrl.clone();
-      adminLoginUrl.pathname = "/admin/login";
-      adminLoginUrl.searchParams.set("error", "unauthorized");
-      return NextResponse.redirect(adminLoginUrl);
-    }
   }
 
   if (isAdminLoginRoute && user) {
-    const isAdmin = await isAdminUser(supabase, user.id);
+    const isAdmin = await safeIsAdmin(
+      () => user.id,
+      () => isAdminUser(supabase, user.id),
+    );
 
     if (isAdmin) {
       const adminUrl = request.nextUrl.clone();
@@ -88,7 +100,10 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const isAdmin = await isAdminUser(supabase, user.id);
+    const isAdmin = await safeIsAdmin(
+      () => user.id,
+      () => isAdminUser(supabase, user.id),
+    );
 
     if (isAdmin) {
       const adminUrl = request.nextUrl.clone();
@@ -99,7 +114,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isAuthRoute && user) {
-    const isAdmin = await isAdminUser(supabase, user.id);
+    const isAdmin = await safeIsAdmin(
+      () => user.id,
+      () => isAdminUser(supabase, user.id),
+    );
     const accountUrl = request.nextUrl.clone();
     accountUrl.pathname = isAdmin ? "/admin" : "/account";
     accountUrl.search = "";
