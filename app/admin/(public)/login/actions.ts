@@ -32,42 +32,72 @@ export async function adminLogin(
   _prevState: AdminLoginState | null,
   formData: FormData,
 ): Promise<AdminLoginState> {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const redirectTo = sanitizeAdminRedirectPath(
-    String(formData.get("redirect") ?? "/admin"),
-  );
+  try {
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+    const redirectTo = sanitizeAdminRedirectPath(
+      String(formData.get("redirect") ?? "/admin"),
+    );
 
-  if (!email || !password) {
-    return { error: "Email and password are required." };
+    if (!email || !password) {
+      return { error: "Email and password are required." };
+    }
+
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      return {
+        error:
+          "Authentication is not configured on this deployment. Please contact support.",
+      };
+    }
+
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return { error: mapAuthError(error.message) };
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Unable to sign in. Please try again." };
+    }
+
+    const isAdmin = await isAdminUser(supabase, user.id);
+
+    if (!isAdmin) {
+      await supabase.auth.signOut();
+      return { error: "You do not have admin access." };
+    }
+
+    redirect(redirectTo);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message.toLowerCase() : "unknown error";
+
+    if (
+      message.includes("supabase") ||
+      message.includes("fetch failed") ||
+      message.includes("auth")
+    ) {
+      return {
+        error:
+          "Unable to reach authentication service right now. Please try again.",
+      };
+    }
+
+    return {
+      error: "Something went wrong while signing in. Please try again.",
+    };
   }
-
-  const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    return { error: mapAuthError(error.message) };
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "Unable to sign in. Please try again." };
-  }
-
-  const isAdmin = await isAdminUser(supabase, user.id);
-
-  if (!isAdmin) {
-    await supabase.auth.signOut();
-    return { error: "You do not have admin access." };
-  }
-
-  redirect(redirectTo);
 }
