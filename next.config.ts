@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      // Server Action body limit for admin image uploads.
+      // Product image uploads allow up to 5 MB before server-side compression.
       bodySizeLimit: "6mb",
     },
   },
