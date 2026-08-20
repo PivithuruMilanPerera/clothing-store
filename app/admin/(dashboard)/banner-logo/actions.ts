@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { getSessionAdmin, requireAdmin } from "@/lib/auth";
 import { saveLandingContent } from "@/lib/landing-content";
 import { isManagedLandingImageUrl } from "@/lib/landing-image-validation";
 import { hasAdminCredentials } from "@/lib/supabase/admin";
@@ -24,7 +24,10 @@ export async function uploadLandingImage(
   _prevState: BannerLogoActionState | null,
   formData: FormData,
 ): Promise<BannerLogoActionState> {
-  await requireAdmin();
+  const admin = await getSessionAdmin();
+  if (!admin) {
+    return { error: "You must be signed in as an admin to upload images." };
+  }
 
   if (!hasAdminCredentials()) {
     return { error: "Supabase storage is not configured." };
@@ -32,7 +35,12 @@ export async function uploadLandingImage(
 
   const file = formData.get("file");
 
-  if (!(file instanceof File)) {
+  if (
+    typeof File === "undefined" ||
+    !(file instanceof File) ||
+    typeof file.arrayBuffer !== "function" ||
+    file.size === 0
+  ) {
     return { error: "Please choose an image file to upload." };
   }
 
@@ -54,6 +62,7 @@ export async function uploadLandingImage(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to upload image.";
+    console.error("[admin-upload]", message, error);
 
     return { error: message };
   }
