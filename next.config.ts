@@ -9,6 +9,8 @@ const serverActionOrigins = [
 ].filter((origin): origin is string => Boolean(origin));
 
 const nextConfig: NextConfig = {
+  // Keep sharp outside the Turbopack bundle so native libs load on Vercel.
+  serverExternalPackages: ["sharp"],
   experimental: {
     serverActions: {
       // Product image uploads allow up to 5 MB before server-side compression.
@@ -36,7 +38,11 @@ const nextConfig: NextConfig = {
     ],
   },
   outputFileTracingIncludes: {
-    "*": ["./node_modules/@swc/helpers/**/*"],
+    "*": [
+      "./node_modules/@swc/helpers/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+      "./node_modules/@img/sharp-linux-x64/**/*",
+    ],
   },
 };
 
