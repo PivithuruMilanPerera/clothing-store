@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { getSessionAdmin } from "@/lib/auth";
 import { hasAdminCredentials } from "@/lib/supabase/admin";
 import {
   uploadLandingImageToStorage,
@@ -21,11 +21,29 @@ export type ProductUploadActionState = UploadActionState & {
   compressedSize?: number;
 };
 
+function isUploadFile(value: FormDataEntryValue | null): value is File {
+  return (
+    typeof File !== "undefined" &&
+    value instanceof File &&
+    typeof value.arrayBuffer === "function" &&
+    value.size > 0
+  );
+}
+
+function toUploadErrorMessage(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : fallback;
+  console.error("[admin-upload]", message, error);
+  return message;
+}
+
 export async function uploadAdminImage(
   _prevState: UploadActionState | null,
   formData: FormData,
 ): Promise<UploadActionState> {
-  await requireAdmin();
+  const admin = await getSessionAdmin();
+  if (!admin) {
+    return { error: "You must be signed in as an admin to upload images." };
+  }
 
   if (!hasAdminCredentials()) {
     return { error: "Supabase storage is not configured." };
@@ -33,7 +51,7 @@ export async function uploadAdminImage(
 
   const file = formData.get("file");
 
-  if (!(file instanceof File)) {
+  if (!isUploadFile(file)) {
     return { error: "Please choose an image file to upload." };
   }
 
@@ -46,9 +64,9 @@ export async function uploadAdminImage(
     const { url } = await uploadLandingImageToStorage(file);
     return { success: "Image uploaded.", imageUrl: url };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to upload image.";
-    return { error: message };
+    return {
+      error: toUploadErrorMessage(error, "Unable to upload image."),
+    };
   }
 }
 
@@ -56,7 +74,10 @@ export async function uploadProductImage(
   _prevState: ProductUploadActionState | null,
   formData: FormData,
 ): Promise<ProductUploadActionState> {
-  await requireAdmin();
+  const admin = await getSessionAdmin();
+  if (!admin) {
+    return { error: "You must be signed in as an admin to upload images." };
+  }
 
   if (!hasAdminCredentials()) {
     return { error: "Supabase storage is not configured." };
@@ -64,7 +85,7 @@ export async function uploadProductImage(
 
   const file = formData.get("file");
 
-  if (!(file instanceof File)) {
+  if (!isUploadFile(file)) {
     return { error: "Please choose an image file to upload." };
   }
 
@@ -84,9 +105,9 @@ export async function uploadProductImage(
       compressedSize,
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to upload image.";
-    return { error: message };
+    return {
+      error: toUploadErrorMessage(error, "Unable to upload image."),
+    };
   }
 }
 
