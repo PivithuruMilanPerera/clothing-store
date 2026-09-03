@@ -6,17 +6,29 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import {
+  getCurrentUserId,
+  loadUserCartFromDb,
+  syncUserCartToDb,
+  validateCartStock,
+} from "@/lib/cart-actions";
+import {
+  clearGuestCartFromStorage,
   createCartItemId,
   getCartItemCount,
   getCartSubtotal,
-  readCartFromStorage,
-  writeCartToStorage,
+  mergeCartItems,
+  readGuestCartFromStorage,
+  readUserCartFromStorage,
+  writeGuestCartToStorage,
+  writeUserCartToStorage,
 } from "@/lib/cart";
-import type { CartItem, ProductColor, ProductSize } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import type { CartItem, CartStockStatus, ProductColor, ProductSize } from "@/lib/types";
 
 type AddCartItemInput = {
   slug: string;
@@ -34,81 +46,301 @@ type CartContextValue = {
   itemCount: number;
   subtotal: number;
   isHydrated: boolean;
+  isCheckingStock: boolean;
+  stockStatus: Record<string, CartStockStatus>;
+  hasOutOfStockItems: boolean;
+  hasStockMismatch: boolean;
+  isUserCart: boolean;
   addItem: (item: AddCartItemInput) => void;
   updateQuantity: (id: string, quantity: number) => void;
   removeItem: (id: string) => void;
   clearCart: () => void;
+  refreshStock: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isCheckingStock, setIsCheckingStock] = useState(false);
+  const [stockStatus, setStockStatus] = useState<Record<string, CartStockStatus>>({});
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    setItems((current) =>
-      current.length > 0 ? current : readCartFromStorage(),
-    );
-    setIsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (isHydrated) {
-      writeCartToStorage(items);
-    }
-  }, [items, isHydrated]);
-
-  const addItem = useCallback((item: AddCartItemInput) => {
-    const id = createCartItemId(item.slug, item.color, item.size);
-    const quantity = item.quantity ?? 1;
-
-    setItems((current) => {
-      const existing = current.find((cartItem) => cartItem.id === id);
-
-      if (existing) {
-        return current.map((cartItem) =>
-          cartItem.id === id
-            ? { ...cartItem, quantity: cartItem.quantity + quantity }
-            : cartItem,
-        );
-      }
-
-      return [
-        ...current,
-        {
-          id,
-          slug: item.slug,
-          name: item.name,
-          image: item.image,
-          price: item.price,
-          color: item.color,
-          colorName: item.colorName,
-          size: item.size,
-          quantity,
-        },
-      ];
-    });
-  }, []);
-
-  const updateQuantity = useCallback((id: string, quantity: number) => {
-    if (quantity < 1) {
-      setItems((current) => current.filter((item) => item.id !== id));
+  const performStockCheck = useCallback(async (cartItems: CartItem[]) => {
+    if (cartItems.length === 0) {
+      setStockStatus({});
       return;
     }
 
-    setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, quantity } : item)),
-    );
+    try {
+      setIsCheckingStock(true);
+      const statuses = await validateCartStock(cartItems);
+      setStockStatus(statuses);
+
+      // Enhance items with real-time stock details and updated live pricing if changed
+      setItems((currentItems) =>
+        currentItems.map((item) => {
+          const status = statuses[item.id];
+          if (!status) {
+            return item;
+          }
+
+          return {
+            ...item,
+            price: status.currentPrice > 0 ? status.currentPrice : item.price,
+            availableStock: status.availableStock,
+            isOutOfStock: status.isOutOfStock,
+            isLowStock: status.isLowStock,
+          };
+        }),
+      );
+    } catch {
+      // Keep existing stock status on failure
+    } finally {
+      setIsCheckingStock(false);
+    }
   }, []);
+
+  // Initial hydration: determine user status, load cart, merge guest session cart if logging in
+  useEffect(() => {
+    let isMounted = true;
+
+    async function initializeCart() {
+      try {
+        const currentUserId = await getCurrentUserId();
+        if (!isMounted) return;
+
+        setUserId(currentUserId);
+
+        const guestItems = readGuestCartFromStorage();
+
+        if (currentUserId) {
+          // Logged-in customer: load persistent cart from DB and local cache
+          const cachedUserItems = readUserCartFromStorage(currentUserId);
+          const dbItems = await loadUserCartFromDb();
+          const baseUserItems = dbItems && dbItems.length > 0 ? dbItems : cachedUserItems;
+
+          // Merge any guest session cart items into the registered account cart
+          const merged = mergeCartItems(baseUserItems, guestItems);
+
+          if (guestItems.length > 0) {
+            clearGuestCartFromStorage();
+          }
+
+          if (isMounted) {
+            setItems(merged);
+            writeUserCartToStorage(currentUserId, merged);
+            if (merged.length > 0) {
+              void syncUserCartToDb(merged);
+            }
+          }
+
+          void performStockCheck(merged);
+        } else {
+          // Guest customer: session-based cart
+          if (isMounted) {
+            setItems(guestItems);
+          }
+          void performStockCheck(guestItems);
+        }
+      } catch {
+        const fallbackGuest = readGuestCartFromStorage();
+        if (isMounted) {
+          setItems(fallbackGuest);
+        }
+      } finally {
+        if (isMounted) {
+          setIsHydrated(true);
+        }
+      }
+    }
+
+    void initializeCart();
+
+    // Listen to Supabase auth state changes for real-time sign-in / sign-out sync
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      if (event === "SIGNED_IN" && session?.user) {
+        const newUserId = session.user.id;
+        setUserId(newUserId);
+
+        const currentGuestItems = readGuestCartFromStorage();
+        const dbItems = (await loadUserCartFromDb()) ?? readUserCartFromStorage(newUserId);
+        const merged = mergeCartItems(dbItems, currentGuestItems);
+
+        clearGuestCartFromStorage();
+        writeUserCartToStorage(newUserId, merged);
+        setItems(merged);
+        void syncUserCartToDb(merged);
+        void performStockCheck(merged);
+      } else if (event === "SIGNED_OUT") {
+        setUserId(null);
+        clearGuestCartFromStorage();
+        setItems([]);
+        setStockStatus({});
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [performStockCheck]);
+
+  // Persist cart changes based on auth status (sessionStorage for guest, localStorage + DB for user)
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (userId) {
+      // Customer: persistent across sessions
+      writeUserCartToStorage(userId, items);
+
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+
+      syncTimeoutRef.current = setTimeout(() => {
+        void syncUserCartToDb(items);
+      }, 500);
+    } else {
+      // Guest: session-based
+      writeGuestCartToStorage(items);
+    }
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [items, userId, isHydrated]);
+
+  const addItem = useCallback(
+    (item: AddCartItemInput) => {
+      const id = createCartItemId(item.slug, item.color, item.size);
+      const addQty = Math.max(1, item.quantity ?? 1);
+
+      setItems((current) => {
+        const existingIndex = current.findIndex((cartItem) => cartItem.id === id);
+        let updated: CartItem[];
+
+        if (existingIndex >= 0) {
+          const existing = current[existingIndex];
+          const newQty = existing.quantity + addQty;
+          updated = current.map((cartItem, idx) =>
+            idx === existingIndex
+              ? {
+                  ...cartItem,
+                  quantity: newQty,
+                  image: item.image || cartItem.image,
+                  price: item.price || cartItem.price,
+                }
+              : cartItem,
+          );
+        } else {
+          updated = [
+            ...current,
+            {
+              id,
+              slug: item.slug,
+              name: item.name,
+              image: item.image,
+              price: item.price,
+              color: item.color,
+              colorName: item.colorName,
+              size: item.size,
+              quantity: addQty,
+            },
+          ];
+        }
+
+        // Trigger stock check with updated items
+        void performStockCheck(updated);
+        return updated;
+      });
+    },
+    [performStockCheck],
+  );
+
+  const updateQuantity = useCallback(
+    (id: string, requestedQuantity: number) => {
+      // Minimum quantity is 1 in cart; removal is handled explicitly via removeItem
+      const finalRequestedQuantity = Math.max(1, requestedQuantity);
+
+      setItems((current) => {
+        const item = current.find((i) => i.id === id);
+        if (!item) return current;
+
+        const status = stockStatus[id];
+        let finalQuantity = finalRequestedQuantity;
+
+        // Cap at real-time available stock if available
+        if (status && status.availableStock > 0 && finalQuantity > status.availableStock) {
+          finalQuantity = status.availableStock;
+        }
+
+        return current.map((cartItem) =>
+          cartItem.id === id
+            ? { ...cartItem, quantity: Math.max(1, finalQuantity) }
+            : cartItem,
+        );
+      });
+    },
+    [stockStatus],
+  );
 
   const removeItem = useCallback((id: string) => {
     setItems((current) => current.filter((item) => item.id !== id));
+    setStockStatus((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
   }, []);
 
   const clearCart = useCallback(() => {
     setItems([]);
-  }, []);
+    setStockStatus({});
+    if (userId) {
+      writeUserCartToStorage(userId, []);
+      void syncUserCartToDb([]);
+    } else {
+      clearGuestCartFromStorage();
+    }
+  }, [userId]);
+
+  const refreshStock = useCallback(async () => {
+    await performStockCheck(items);
+  }, [items, performStockCheck]);
+
+  const hasOutOfStockItems = useMemo(
+    () =>
+      items.some((item) => {
+        const status = stockStatus[item.id];
+        return status ? status.isOutOfStock : item.isOutOfStock ?? false;
+      }),
+    [items, stockStatus],
+  );
+
+  const hasStockMismatch = useMemo(
+    () =>
+      items.some((item) => {
+        const status = stockStatus[item.id];
+        return (
+          status &&
+          !status.isOutOfStock &&
+          item.quantity > status.availableStock
+        );
+      }),
+    [items, stockStatus],
+  );
 
   const value = useMemo(
     () => ({
@@ -116,12 +348,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
       itemCount: getCartItemCount(items),
       subtotal: getCartSubtotal(items),
       isHydrated,
+      isCheckingStock,
+      stockStatus,
+      hasOutOfStockItems,
+      hasStockMismatch,
+      isUserCart: Boolean(userId),
       addItem,
       updateQuantity,
       removeItem,
       clearCart,
+      refreshStock,
     }),
-    [items, isHydrated, addItem, updateQuantity, removeItem, clearCart],
+    [
+      items,
+      isHydrated,
+      isCheckingStock,
+      stockStatus,
+      hasOutOfStockItems,
+      hasStockMismatch,
+      userId,
+      addItem,
+      updateQuantity,
+      removeItem,
+      clearCart,
+      refreshStock,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

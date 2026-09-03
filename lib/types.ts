@@ -66,6 +66,20 @@ export type CartItem = {
   colorName?: string;
   size: ProductSize;
   quantity: number;
+  availableStock?: number;
+  isOutOfStock?: boolean;
+  isLowStock?: boolean;
+};
+
+export type CartStockStatus = {
+  id: string;
+  slug: string;
+  color: string;
+  size: string;
+  availableStock: number;
+  isOutOfStock: boolean;
+  isLowStock: boolean;
+  currentPrice: number;
 };
 
 export type Category = {
@@ -139,9 +153,14 @@ export type OrderItem = {
 
 export type Order = {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  customer_email?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
   order_number: string;
   status: OrderStatus;
+  payment_method?: string;
+  is_guest?: boolean;
   subtotal: number;
   shipping: number;
   total: number;
@@ -149,6 +168,31 @@ export type Order = {
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];
+};
+
+export type CheckoutMode = "registered" | "guest";
+
+export type CheckoutShippingAddress = {
+  country: string;
+  firstName: string;
+  lastName: string;
+  company?: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  phone: string;
+};
+
+export type CheckoutSubmissionData = {
+  mode: CheckoutMode;
+  email: string;
+  subscribeNews?: boolean;
+  password?: string;
+  confirmPassword?: string;
+  shippingAddress: CheckoutShippingAddress;
+  paymentMethod: "cash_on_delivery";
 };
 
 export type ReturnStatus = "pending" | "approved" | "rejected" | "completed";
