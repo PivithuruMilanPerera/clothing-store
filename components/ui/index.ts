@@ -3,5 +3,7 @@ export { Button } from "./button/Button";
 export { Container } from "./container/Container";
 export { IconButton } from "./icon-button/IconButton";
 export { Input } from "./input/Input";
+export { LoadingCircle } from "./loading-circle/LoadingCircle";
+export { LinkPendingCircle } from "./loading-circle/LinkPendingCircle";
 export { Popup } from "./popup/Popup";
 export { SectionHeader } from "./section-header/SectionHeader";

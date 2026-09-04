@@ -3,10 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { setupRegistrationProfile } from "@/lib/registration";
 import { deductInventoryForOrderItems } from "@/lib/order-inventory";
+import { calculateShipping } from "@/lib/checkout-constants";
+import {
+  normalizePaymentStatus,
+  resolveCheckoutStatuses,
+} from "@/lib/order-status";
 import { createAdminClient, hasAdminCredentials } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { Address, CartItem, Order, Profile } from "@/lib/types";
-import { calculateShipping } from "@/lib/checkout-constants";
+import type { Address, CartItem, Order, PaymentMethod, Profile } from "@/lib/types";
 
 export type CheckoutCustomerData = {
   isLoggedIn: boolean;
@@ -34,7 +38,8 @@ export type PlaceOrderInput = {
   postalCode: string;
   country: string;
   phone: string;
-  paymentMethod: "cash_on_delivery";
+  paymentMethod: PaymentMethod;
+  cardPaymentOutcome?: "success" | "failed" | "incomplete";
   saveAddress?: boolean;
   savedAddressId?: string;
   items: CartItem[];
@@ -644,14 +649,23 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       };
     }
 
+    const paymentMethod = input.paymentMethod;
+    const { status, paymentStatus } = resolveCheckoutStatuses(
+      paymentMethod,
+      paymentMethod === "card"
+        ? (input.cardPaymentOutcome ?? "incomplete")
+        : "incomplete",
+    );
+
     const orderPayload = {
       user_id: userId,
       customer_email: email,
       customer_name: fullName,
       customer_phone: phone,
       order_number: orderNumber,
-      status: "pending",
-      payment_method: "cash_on_delivery",
+      status,
+      payment_method: paymentMethod,
+      payment_status: paymentStatus,
       is_guest: isGuest,
       subtotal,
       shipping,
@@ -745,7 +759,12 @@ export async function getOrderByNumber(orderNumber: string): Promise<Order | nul
       return null;
     }
 
-    return data as Order;
+    return {
+      ...(data as Order),
+      payment_status: normalizePaymentStatus(
+        (data as Order).payment_status,
+      ),
+    };
   } catch {
     return null;
   }

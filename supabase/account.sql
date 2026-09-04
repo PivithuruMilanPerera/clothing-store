@@ -25,6 +25,8 @@ create table if not exists public.orders (
   order_number text not null unique,
   status text not null default 'pending'
     check (status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+  payment_status text not null default 'pending'
+    check (payment_status in ('pending', 'paid', 'failed')),
   subtotal numeric(10, 2) not null,
   shipping numeric(10, 2) not null default 0,
   total numeric(10, 2) not null,

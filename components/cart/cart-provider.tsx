@@ -60,6 +60,23 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
+/** Persistable cart fields only — excludes ephemeral stock flags that must not re-trigger DB sync. */
+function getCartSyncSignature(items: CartItem[]): string {
+  return JSON.stringify(
+    items.map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      name: item.name,
+      image: item.image,
+      price: item.price,
+      color: item.color,
+      colorName: item.colorName ?? null,
+      size: item.size,
+      quantity: item.quantity,
+    })),
+  );
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
@@ -67,6 +84,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isCheckingStock, setIsCheckingStock] = useState(false);
   const [stockStatus, setStockStatus] = useState<Record<string, CartStockStatus>>({});
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncedSignatureRef = useRef<string>("");
+  const isHydratedRef = useRef(false);
 
   const performStockCheck = useCallback(async (cartItems: CartItem[]) => {
     if (cartItems.length === 0) {
@@ -79,23 +98,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const statuses = await validateCartStock(cartItems);
       setStockStatus(statuses);
 
-      // Enhance items with real-time stock details and updated live pricing if changed
-      setItems((currentItems) =>
-        currentItems.map((item) => {
+      // Only rewrite cart items when live price actually changed.
+      // Stock flags live in stockStatus so they don't retrigger DB sync loops.
+      setItems((currentItems) => {
+        let changed = false;
+        const next = currentItems.map((item) => {
           const status = statuses[item.id];
-          if (!status) {
+          if (!status || !(status.currentPrice > 0) || status.currentPrice === item.price) {
             return item;
           }
 
-          return {
-            ...item,
-            price: status.currentPrice > 0 ? status.currentPrice : item.price,
-            availableStock: status.availableStock,
-            isOutOfStock: status.isOutOfStock,
-            isLowStock: status.isLowStock,
-          };
-        }),
-      );
+          changed = true;
+          return { ...item, price: status.currentPrice };
+        });
+
+        return changed ? next : currentItems;
+      });
     } catch {
       // Keep existing stock status on failure
     } finally {
@@ -132,6 +150,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           if (isMounted) {
             setItems(merged);
             writeUserCartToStorage(currentUserId, merged);
+            lastSyncedSignatureRef.current = getCartSyncSignature(merged);
             if (merged.length > 0) {
               void syncUserCartToDb(merged);
             }
@@ -142,6 +161,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           // Guest customer: session-based cart
           if (isMounted) {
             setItems(guestItems);
+            lastSyncedSignatureRef.current = getCartSyncSignature(guestItems);
           }
           void performStockCheck(guestItems);
         }
@@ -149,9 +169,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const fallbackGuest = readGuestCartFromStorage();
         if (isMounted) {
           setItems(fallbackGuest);
+          lastSyncedSignatureRef.current = getCartSyncSignature(fallbackGuest);
         }
       } finally {
         if (isMounted) {
+          isHydratedRef.current = true;
           setIsHydrated(true);
         }
       }
@@ -166,7 +188,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
+      // Initial load is handled by initializeCart — ignore the boot SIGNED_IN event.
       if (event === "SIGNED_IN" && session?.user) {
+        if (!isHydratedRef.current) {
+          return;
+        }
+
         const newUserId = session.user.id;
         setUserId(newUserId);
 
@@ -176,12 +203,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         clearGuestCartFromStorage();
         writeUserCartToStorage(newUserId, merged);
+        lastSyncedSignatureRef.current = getCartSyncSignature(merged);
         setItems(merged);
         void syncUserCartToDb(merged);
         void performStockCheck(merged);
       } else if (event === "SIGNED_OUT") {
         setUserId(null);
         clearGuestCartFromStorage();
+        lastSyncedSignatureRef.current = getCartSyncSignature([]);
         setItems([]);
         setStockStatus({});
       }
@@ -203,11 +232,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Customer: persistent across sessions
       writeUserCartToStorage(userId, items);
 
+      const signature = getCartSyncSignature(items);
+      if (signature === lastSyncedSignatureRef.current) {
+        return;
+      }
+
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
       }
 
       syncTimeoutRef.current = setTimeout(() => {
+        lastSyncedSignatureRef.current = signature;
         void syncUserCartToDb(items);
       }, 500);
     } else {
@@ -308,6 +343,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = useCallback(() => {
     setItems([]);
     setStockStatus({});
+    lastSyncedSignatureRef.current = getCartSyncSignature([]);
     if (userId) {
       writeUserCartToStorage(userId, []);
       void syncUserCartToDb([]);

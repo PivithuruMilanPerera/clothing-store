@@ -6,4 +6,6 @@ export { AdminShell } from "./AdminShell";
 export { BannerLogoAdmin } from "./banner-logo/BannerLogoAdmin";
 export { CategoriesAdmin } from "./categories/CategoriesAdmin";
 export { ImageUploadField } from "./ImageUploadField";
+export { OrdersAdmin } from "./orders/OrdersAdmin";
 export { ProductsAdmin } from "./products/ProductsAdmin";
+export { UsersAdmin } from "./users/UsersAdmin";

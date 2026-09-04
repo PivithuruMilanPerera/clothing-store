@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { getOrderByNumber } from "@/app/checkout/actions";
 import { SiteFooter, SiteHeader } from "@/components/layout";
 import { Button, Container } from "@/components/ui";
-import { formatPrice } from "@/lib/utils";
+import {
+  formatPaymentMethodLabel,
+  normalizePaymentStatus,
+  ORDER_STATUS_LABELS,
+  orderStatusBadgeClass,
+  PAYMENT_STATUS_LABELS,
+  paymentStatusBadgeClass,
+} from "@/lib/order-status";
+import { cn, formatPrice } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Order Confirmed | VELVORZ",
@@ -40,9 +47,51 @@ export default async function CheckoutSuccessPage({
                 Thank You For Your Order
               </h1>
               <p className="font-body mt-3 text-sm text-on-surface-variant leading-relaxed">
-                We have received your order and are preparing it for shipment. You will pay with{" "}
-                <strong className="text-on-surface">Cash on Delivery (COD)</strong> when the package arrives.
+                We have received your order and are preparing it for shipment.
+                {order?.payment_method === "card" &&
+                normalizePaymentStatus(order.payment_status) === "paid"
+                  ? " Your card payment was completed successfully."
+                  : (
+                    <>
+                      {" "}
+                      You will pay with{" "}
+                      <strong className="text-on-surface">
+                        {formatPaymentMethodLabel(
+                          order?.payment_method ?? "cash_on_delivery",
+                        )}
+                      </strong>{" "}
+                      when the package arrives.
+                    </>
+                  )}
               </p>
+
+              {order ? (
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                  <span
+                    className={cn(
+                      "font-label inline-block border px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] leading-none",
+                      orderStatusBadgeClass(order.status),
+                    )}
+                  >
+                    Order · {ORDER_STATUS_LABELS[order.status]}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-label inline-block border px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] leading-none",
+                      paymentStatusBadgeClass(
+                        normalizePaymentStatus(order.payment_status),
+                      ),
+                    )}
+                  >
+                    Payment ·{" "}
+                    {
+                      PAYMENT_STATUS_LABELS[
+                        normalizePaymentStatus(order.payment_status)
+                      ]
+                    }
+                  </span>
+                </div>
+              ) : null}
 
               {orderNumber ? (
                 <div className="mt-6 inline-block rounded-md border border-outline-variant bg-surface-container-low px-4 py-2">
@@ -69,15 +118,17 @@ export default async function CheckoutSuccessPage({
                     {order.order_items.map((item) => (
                       <li key={item.id} className="flex items-center gap-4 py-3">
                         {item.image ? (
-                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-outline-variant bg-surface-container-low">
-                            <Image
-                              src={item.image}
-                              alt={item.product_name}
-                              fill
-                              sizes="56px"
-                              className="object-cover object-center"
-                            />
-                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-on-primary">
+                          <div className="relative h-14 w-14 shrink-0">
+                            <div className="relative h-full w-full overflow-hidden rounded-md border border-outline-variant bg-surface-container-low">
+                              <Image
+                                src={item.image}
+                                alt={item.product_name}
+                                fill
+                                sizes="56px"
+                                className="object-cover object-center"
+                              />
+                            </div>
+                            <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-on-primary">
                               {item.quantity}
                             </span>
                           </div>

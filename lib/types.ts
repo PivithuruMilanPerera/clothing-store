@@ -23,6 +23,7 @@ export type Product = {
   badge?: string;
   colors?: ProductColor[];
   colorOptions?: Array<{ id: string; name: string; hex: string }>;
+  sizes?: ProductSize[];
 };
 
 export type ShopProduct = Product & {
@@ -138,6 +139,12 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
+export type PaymentMethod = "cash_on_delivery" | "card";
+
+export type PaymentStatus = "pending" | "paid" | "failed";
+
+export type CardPaymentOutcome = "success" | "failed" | "incomplete";
+
 export type OrderItem = {
   id: string;
   order_id: string;
@@ -159,7 +166,8 @@ export type Order = {
   customer_phone?: string | null;
   order_number: string;
   status: OrderStatus;
-  payment_method?: string;
+  payment_method?: PaymentMethod | string;
+  payment_status?: PaymentStatus;
   is_guest?: boolean;
   subtotal: number;
   shipping: number;
@@ -192,7 +200,7 @@ export type CheckoutSubmissionData = {
   password?: string;
   confirmPassword?: string;
   shippingAddress: CheckoutShippingAddress;
-  paymentMethod: "cash_on_delivery";
+  paymentMethod: PaymentMethod;
 };
 
 export type ReturnStatus = "pending" | "approved" | "rejected" | "completed";

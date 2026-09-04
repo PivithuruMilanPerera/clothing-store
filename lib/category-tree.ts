@@ -41,7 +41,7 @@ export function isReservedCategorySlug(slug: string): boolean {
 
 export function flattenCategoryTreeOptions(
   nodes: CategoryTreeNode[],
-  depth = 0,
+  pathLabels: string[] = [],
   excludeIds: Set<string> = new Set(),
 ): CategoryPickerOption[] {
   return nodes.flatMap((node) => {
@@ -49,10 +49,10 @@ export function flattenCategoryTreeOptions(
       return [];
     }
 
-    const prefix = depth > 0 ? `${"— ".repeat(depth)}` : "";
+    const labels = [...pathLabels, node.name];
     return [
-      { id: node.id, label: `${prefix}${node.name}` },
-      ...flattenCategoryTreeOptions(node.children, depth + 1, excludeIds),
+      { id: node.id, label: labels.join(" - ") },
+      ...flattenCategoryTreeOptions(node.children, labels, excludeIds),
     ];
   });
 }
