@@ -2,12 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { useCart } from "@/components/cart/cart-provider";
 import { Button } from "@/components/ui";
 import { getColorLabel } from "@/lib/cart";
 import { cn, formatPrice } from "@/lib/utils";
 
 export function CartContent() {
+  const router = useRouter();
+  const [isCheckoutPending, startCheckoutTransition] = useTransition();
   const {
     items,
     subtotal,
@@ -20,6 +24,16 @@ export function CartContent() {
     isCheckingStock,
   } = useCart();
 
+  function handleProceedToCheckout() {
+    if (hasOutOfStockItems || items.length === 0 || isCheckoutPending) {
+      return;
+    }
+
+    startCheckoutTransition(() => {
+      router.push("/checkout");
+    });
+  }
+
   if (items.length === 0) {
     return (
       <div className="py-16 text-center md:py-24">
@@ -29,7 +43,7 @@ export function CartContent() {
         <p className="font-body text-base leading-normal mt-4 text-on-surface-variant">
           Add pieces from the collection to continue.
         </p>
-        <Button href="/shop" className="mt-8">
+        <Button href="/shop" prefetch={false} className="mt-8">
           Shop Now
         </Button>
       </div>
@@ -222,14 +236,19 @@ export function CartContent() {
         </dl>
 
         <Button
-          href={hasOutOfStockItems || items.length === 0 ? undefined : "/checkout"}
+          onClick={handleProceedToCheckout}
+          isLoading={isCheckoutPending}
           className={cn(
             "mt-8 w-full py-4 uppercase tracking-[0.15em] font-bold text-xs transition-all",
             hasOutOfStockItems && "cursor-not-allowed opacity-50",
           )}
-          disabled={hasOutOfStockItems || items.length === 0}
+          disabled={hasOutOfStockItems || items.length === 0 || isCheckoutPending}
         >
-          {hasOutOfStockItems ? "Remove Out of Stock Items" : "Proceed to Checkout"}
+          {hasOutOfStockItems
+            ? "Remove Out of Stock Items"
+            : isCheckoutPending
+              ? "Loading..."
+              : "Proceed to Checkout"}
         </Button>
 
         {hasOutOfStockItems ? (

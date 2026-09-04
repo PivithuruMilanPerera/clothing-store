@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { Eye, Pencil, SlidersHorizontal, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1309,7 +1309,7 @@ export function ProductForm({
             ))}
           </select>
           <p className="font-body mt-2 text-xs leading-normal text-on-surface-variant">
-            Choose any level, for example Men → Casual Wear → T Shirt.
+            Choose any level, for example Men - Casual Wear - T Shirt.
           </p>
         </div>
         <div>
@@ -1571,6 +1571,196 @@ export function ProductForm({
   );
 }
 
+function getVariantInventoryValue(
+  variants: StoreProductWithRelations["variants"],
+  colorId: string,
+  sizeId: string,
+) {
+  return (
+    variants.find(
+      (variant) =>
+        (variant.color_id ?? "") === colorId &&
+        (variant.size_id ?? "") === sizeId,
+    )?.inventory ?? 0
+  );
+}
+
+function ProductInventoryView({
+  product,
+}: {
+  product: StoreProductWithRelations;
+}) {
+  const colors = product.colors.map((entry) => entry.color);
+  const sizes = product.sizes.map((entry) => entry.size);
+  const stockState = getProductStockState(product.variants ?? []);
+  const stockSummary = getProductStockSummary(product);
+
+  const renderInventoryCell = (colorId: string, sizeId: string) => {
+    const inventory = getVariantInventoryValue(
+      product.variants,
+      colorId,
+      sizeId,
+    );
+    const status = getVariantInventoryStatus(inventory);
+
+    return (
+      <div>
+        <p className="font-body text-sm tabular-nums text-on-surface">
+          {inventory}
+        </p>
+        <p className={cn("font-body mt-1 text-[11px]", status.className)}>
+          {status.label}
+        </p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            "font-label border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+            stockSummary.className,
+          )}
+        >
+          {stockSummary.label}
+        </span>
+        <p className="font-body text-sm text-on-surface-variant">
+          {stockState.totalInventory} unit
+          {stockState.totalInventory === 1 ? "" : "s"} total
+          {product.variants.length > 0
+            ? ` · ${product.variants.length} variant${
+                product.variants.length === 1 ? "" : "s"
+              }`
+            : ""}
+        </p>
+      </div>
+
+      {colors.length === 0 && sizes.length === 0 ? (
+        <p className="font-body text-sm text-on-surface-variant">
+          No color or size variants are set for this product.
+        </p>
+      ) : colors.length > 0 && sizes.length === 0 ? (
+        <div className="overflow-x-auto border border-outline-variant">
+          <table className="min-w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-outline-variant bg-surface-container-low">
+                <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                  Color
+                </th>
+                <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                  Inventory
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {colors.map((color) => (
+                <tr
+                  key={color.id}
+                  className="border-b border-outline-variant last:border-b-0"
+                >
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-4 w-4 border border-outline-variant"
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      <span className="font-body text-sm text-on-surface">
+                        {color.name}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 align-top">
+                    {renderInventoryCell(color.id, "")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : sizes.length > 0 && colors.length === 0 ? (
+        <div className="overflow-x-auto border border-outline-variant">
+          <table className="min-w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-outline-variant bg-surface-container-low">
+                <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                  Size
+                </th>
+                <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                  Inventory
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sizes.map((size) => (
+                <tr
+                  key={size.id}
+                  className="border-b border-outline-variant last:border-b-0"
+                >
+                  <td className="px-3 py-3">
+                    <span className="font-body text-sm text-on-surface">
+                      {size.label}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 align-top">
+                    {renderInventoryCell("", size.id)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="overflow-x-auto border border-outline-variant">
+          <table className="min-w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-outline-variant bg-surface-container-low">
+                <th className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                  Color / Size
+                </th>
+                {sizes.map((size) => (
+                  <th
+                    key={size.id}
+                    className="font-label px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant"
+                  >
+                    {size.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {colors.map((color) => (
+                <tr
+                  key={color.id}
+                  className="border-b border-outline-variant last:border-b-0"
+                >
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-4 w-4 border border-outline-variant"
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      <span className="font-body text-sm text-on-surface">
+                        {color.name}
+                      </span>
+                    </div>
+                  </td>
+                  {sizes.map((size) => (
+                    <td key={size.id} className="px-3 py-3 align-top">
+                      {renderInventoryCell(color.id, size.id)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProductRow({
   product,
   categoryTree,
@@ -1585,6 +1775,7 @@ function ProductRow({
   allBrands: Brand[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const deleteFormRef = useRef<HTMLFormElement>(null);
   const [deleteState, deleteAction, deletePending] = useActionState(
@@ -1702,6 +1893,14 @@ function ProductRow({
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
+                onClick={() => setShowInventory(true)}
+                aria-label={`View ${product.name} inventory`}
+                className="inline-flex h-7 w-7 items-center justify-center text-on-surface transition-opacity hover:opacity-70"
+              >
+                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsEditing((open) => !open)}
                 aria-label={
                   isEditing
@@ -1732,6 +1931,27 @@ function ProductRow({
       <form ref={deleteFormRef} action={deleteAction} className="hidden">
         <input type="hidden" name="id" value={product.id} />
       </form>
+
+      <Popup
+        open={showInventory}
+        onClose={() => setShowInventory(false)}
+        title={`${product.name} inventory`}
+        description="Stock by color and size."
+        size="lg"
+        footer={
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowInventory(false)}
+            >
+              Close
+            </Button>
+          </div>
+        }
+      >
+        <ProductInventoryView product={product} />
+      </Popup>
 
       <Popup
         open={showDeleteConfirm}

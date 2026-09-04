@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ProductCardShopNow } from "@/components/product/product-card/ProductCardShopNow";
 import { ProductCornerRibbon } from "@/components/product/product-corner-ribbon/ProductCornerRibbon";
 import { getColorLabel } from "@/lib/cart";
 import { formatSaleLabel } from "@/lib/pricing";
@@ -55,19 +56,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
             />
           ) : null}
 
-          {/* Hover overlay: dim + "Shop Now" strip slides up */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-500 group-hover:bg-black/15"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-primary py-3 text-center transition-transform duration-500 ease-out group-hover:translate-y-0"
-          >
-            <span className="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary md:text-[11px]">
-              Shop Now
-            </span>
-          </div>
+          <ProductCardShopNow />
         </div>
 
         {/* ── Info ── */}
@@ -78,7 +67,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           </p>
 
           {/* Name */}
-          <h3 className="text-sm leading-snug text-on-surface font-semibold sm:text-base lg:text-lg xl:text-xl">
+          <h3 className="text-sm leading-snug text-on-surface font-semibold sm:text-base lg:text-md xl:text-lg">
             {product.name}
           </h3>
 
@@ -103,15 +92,30 @@ export function ProductCard({ product, className }: ProductCardProps) {
 
           {/* Color swatches */}
           {swatches.length > 0 ? (
-            <div className="flex justify-center gap-1.5 pt-0.5">
+            <div className="flex w-full flex-wrap justify-center gap-2 pt-0.5">
               {swatches.map((color) => (
                 <span
                   key={color.id}
                   title={color.name}
                   aria-label={color.name}
-                  className="h-3.5 w-3.5 border border-outline-variant transition-[outline,transform] duration-200 hover:scale-110 hover:outline-1 hover:outline-offset-1 hover:outline-outline"
+                  className="h-4 w-4 border border-outline-variant transition-[outline,transform] duration-200 hover:scale-110 hover:outline-1 hover:outline-offset-1 hover:outline-outline md:h-[18px] md:w-[18px]"
                   style={{ backgroundColor: color.hex || "#e5e5e5" }}
                 />
+              ))}
+            </div>
+          ) : null}
+
+          {/* Size boxes */}
+          {product.sizes && product.sizes.length > 0 ? (
+            <div className="flex w-full flex-wrap justify-center gap-1.5 pt-0.5">
+              {product.sizes.map((size) => (
+                <span
+                  key={size}
+                  aria-label={`Size ${size}`}
+                  className="font-label min-w-8 border border-outline-variant px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] leading-none text-on-surface-variant md:min-w-9 md:text-[10px]"
+                >
+                  {size}
+                </span>
               ))}
             </div>
           ) : null}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CartIcon, HomeIcon, ImageIcon } from "@/components/icons";
+import { CartIcon, HomeIcon, ImageIcon, UserIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 const adminNavItems = [
@@ -10,6 +10,7 @@ const adminNavItems = [
   { label: "Categories", href: "/admin/categories", icon: ImageIcon },
   { label: "Products", href: "/admin/products", icon: ImageIcon },
   { label: "Orders", href: "/admin/orders", icon: CartIcon },
+  { label: "Users", href: "/admin/users", icon: UserIcon },
   { label: "Banner & Logo", href: "/admin/banner-logo", icon: ImageIcon },
 ];
 

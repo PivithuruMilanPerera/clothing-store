@@ -1,19 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui";
-import type { Order, OrderStatus } from "@/lib/types";
+import {
+  formatPaymentMethodLabel,
+  normalizePaymentStatus,
+  ORDER_STATUS_LABELS,
+  orderStatusBadgeClass,
+  PAYMENT_STATUS_LABELS,
+  paymentStatusBadgeClass,
+} from "@/lib/order-status";
+import type { Order } from "@/lib/types";
 import { cn, formatPrice } from "@/lib/utils";
 
 type OrderHistoryProps = {
   orders: Order[];
-};
-
-const statusLabels: Record<OrderStatus, string> = {
-  pending: "Pending",
-  processing: "Processing",
-  shipped: "Shipped",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
 };
 
 function formatDate(value: string) {
@@ -41,82 +41,97 @@ export function OrderHistory({ orders }: OrderHistoryProps) {
 
   return (
     <div className="space-y-6">
-      {orders.map((order) => (
-        <article
-          key={order.id}
-          className="border border-outline-variant bg-surface-container-lowest"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant px-5 py-4 md:px-6">
-            <div>
-              <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
-                Order {order.order_number}
-              </p>
-              <p className="font-body text-base leading-normal mt-1 text-on-surface-variant">
-                Placed on {formatDate(order.created_at)}
-              </p>
-            </div>
-            <div className="text-right">
-              <span
-                className={cn(
-                  "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-block border px-3 py-1",
-                  order.status === "delivered"
-                    ? "border-primary text-primary"
-                    : "border-outline-variant text-on-surface-variant",
-                )}
-              >
-                {statusLabels[order.status]}
-              </span>
-              <p className="font-body text-base leading-normal mt-2 font-medium tabular-nums text-on-surface">
-                {formatPrice(Number(order.total))}
-              </p>
-            </div>
-          </div>
+      {orders.map((order) => {
+        const paymentStatus = normalizePaymentStatus(order.payment_status);
 
-          <ul className="divide-y divide-outline-variant">
-            {(order.order_items ?? []).map((item) => (
-              <li
-                key={item.id}
-                className="grid gap-4 px-5 py-5 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center md:px-6"
-              >
-                <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                  {item.image ? (
-                    <Image
-                      src={item.image}
-                      alt={item.product_name}
-                      fill
-                      sizes="80px"
-                      className="object-cover object-center"
-                    />
-                  ) : null}
-                </div>
-
-                <div className="min-w-0">
-                  {item.product_slug ? (
-                    <Link
-                      href={`/products/${item.product_slug}`}
-                      className="font-headline block text-sm font-bold uppercase text-on-surface hover:opacity-70"
-                    >
-                      {item.product_name}
-                    </Link>
-                  ) : (
-                    <p className="font-headline text-sm font-bold uppercase text-on-surface">
-                      {item.product_name}
-                    </p>
-                  )}
-                  <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
-                    {[item.color, item.size].filter(Boolean).join(" / ")}
-                    {item.quantity > 1 ? ` · Qty ${item.quantity}` : ""}
-                  </p>
-                </div>
-
-                <p className="font-body text-base leading-normal tabular-nums text-on-surface">
-                  {formatPrice(Number(item.unit_price) * item.quantity)}
+        return (
+          <article
+            key={order.id}
+            className="border border-outline-variant bg-surface-container-lowest"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant px-5 py-4 md:px-6">
+              <div>
+                <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface">
+                  Order {order.order_number}
                 </p>
-              </li>
-            ))}
-          </ul>
-        </article>
-      ))}
+                <p className="font-body text-base leading-normal mt-1 text-on-surface-variant">
+                  Placed on {formatDate(order.created_at)}
+                </p>
+                <p className="font-body mt-1 text-sm text-on-surface-variant">
+                  {formatPaymentMethodLabel(order.payment_method)}
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span
+                    className={cn(
+                      "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-block border px-3 py-1",
+                      orderStatusBadgeClass(order.status),
+                    )}
+                  >
+                    {ORDER_STATUS_LABELS[order.status]}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-block border px-3 py-1",
+                      paymentStatusBadgeClass(paymentStatus),
+                    )}
+                  >
+                    Pay · {PAYMENT_STATUS_LABELS[paymentStatus]}
+                  </span>
+                </div>
+                <p className="font-body text-base leading-normal mt-2 font-medium tabular-nums text-on-surface">
+                  {formatPrice(Number(order.total))}
+                </p>
+              </div>
+            </div>
+
+            <ul className="divide-y divide-outline-variant">
+              {(order.order_items ?? []).map((item) => (
+                <li
+                  key={item.id}
+                  className="grid gap-4 px-5 py-5 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center md:px-6"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-surface-container-low">
+                    {item.image ? (
+                      <Image
+                        src={item.image}
+                        alt={item.product_name}
+                        fill
+                        sizes="80px"
+                        className="object-cover object-center"
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="min-w-0">
+                    {item.product_slug ? (
+                      <Link
+                        href={`/products/${item.product_slug}`}
+                        className="font-headline block text-sm font-bold uppercase text-on-surface hover:opacity-70"
+                      >
+                        {item.product_name}
+                      </Link>
+                    ) : (
+                      <p className="font-headline text-sm font-bold uppercase text-on-surface">
+                        {item.product_name}
+                      </p>
+                    )}
+                    <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
+                      {[item.color, item.size].filter(Boolean).join(" / ")}
+                      {item.quantity > 1 ? ` · Qty ${item.quantity}` : ""}
+                    </p>
+                  </div>
+
+                  <p className="font-body text-base leading-normal tabular-nums text-on-surface">
+                    {formatPrice(Number(item.unit_price) * item.quantity)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </article>
+        );
+      })}
     </div>
   );
 }

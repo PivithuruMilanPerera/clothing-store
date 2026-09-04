@@ -24,13 +24,26 @@ export default async function AccountLayout({ children }: AccountLayoutProps) {
     redirect("/admin");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, email")
-    .eq("id", user.id)
-    .single();
+  const [{ data: profile }, { data: address }] = await Promise.all([
+    supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+    supabase
+      .from("addresses")
+      .select("full_name")
+      .eq("user_id", user.id)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  const displayName = profile?.full_name || profile?.email || "Account";
+  const fullName =
+    profile?.full_name?.trim() ||
+    (typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name.trim()
+      : "") ||
+    address?.full_name?.trim() ||
+    "";
+  const firstName = fullName.split(/\s+/)[0] || "there";
 
   return (
     <>
@@ -42,7 +55,7 @@ export default async function AccountLayout({ children }: AccountLayoutProps) {
               My Account
             </p>
             <h1 className="font-headline text-[2rem] font-extrabold leading-tight uppercase md:text-5xl md:tracking-tight mt-2 text-on-surface">
-              Hello, {displayName.split(" ")[0]}
+              Hello, {firstName}
             </h1>
           </div>
 

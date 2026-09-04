@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isAdminUser, requireUser } from "@/lib/auth";
+import { normalizePaymentStatus } from "@/lib/order-status";
 import { createClient } from "@/lib/supabase/server";
 import type { Address, Order, Profile, ReturnRequest } from "@/lib/types";
 
@@ -254,7 +255,10 @@ export async function getOrders(): Promise<Order[]> {
     return [];
   }
 
-  return (data ?? []) as Order[];
+  return ((data ?? []) as Order[]).map((order) => ({
+    ...order,
+    payment_status: normalizePaymentStatus(order.payment_status),
+  }));
 }
 
 export async function getReturnRequests(): Promise<ReturnRequest[]> {
