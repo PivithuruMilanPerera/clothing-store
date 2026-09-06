@@ -18,6 +18,11 @@ const hankenGrotesk = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "VELVORZ | Architectural Precision",
   description: "High-fashion retail with uncompromising minimalist aesthetic.",
+  icons: {
+    icon: [{ url: "/site_icon.png", type: "image/png" }],
+    apple: [{ url: "/site_icon.png", type: "image/png" }],
+    shortcut: ["/site_icon.png"],
+  },
 };
 
 export default function RootLayout({

@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { setupRegistrationProfile } from "@/lib/registration";
 import { deductInventoryForOrderItems } from "@/lib/order-inventory";
+import {
+  buildOrderEmailPayload,
+  sendOrderEmails,
+} from "@/lib/order-emails";
 import { calculateShipping } from "@/lib/checkout-constants";
 import {
   normalizePaymentStatus,
@@ -719,6 +723,39 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       } catch {
         // Ignore
       }
+    }
+
+    // 9. Confirmation email to customer + new-order alert to admin
+    try {
+      const emailPayload = buildOrderEmailPayload({
+        orderId,
+        orderNumber,
+        customerName: fullName,
+        customerEmail: email,
+        customerPhone: phone,
+        paymentMethod,
+        paymentStatus,
+        orderStatus: status,
+        subtotal,
+        shipping,
+        total,
+        shippingAddress: {
+          fullName,
+          line1,
+          line2: input.line2?.trim() || "",
+          city,
+          state,
+          postalCode,
+          country,
+          phone,
+          email,
+        },
+        items: input.items,
+      });
+
+      await sendOrderEmails(emailPayload);
+    } catch (emailError) {
+      console.error("Failed to send order emails:", emailError);
     }
 
     revalidatePath("/account/orders");
