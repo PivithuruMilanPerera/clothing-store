@@ -1228,9 +1228,17 @@ export function CheckoutForm() {
               </div>
 
               <div>
-                <label className="font-label block text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant">
-                  Password
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="font-label block text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant">
+                    Password
+                  </label>
+                  <a
+                    href="/login/forgot-password"
+                    className="font-body text-xs text-on-surface-variant underline-offset-4 hover:text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </a>
+                </div>
                 <input
                   type="password"
                   required
