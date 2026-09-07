@@ -1,4 +1,4 @@
-export const LOW_STOCK_THRESHOLD = 10;
+export const LOW_STOCK_THRESHOLD = 5;
 
 export type VariantStock = {
   colorId: string;
@@ -21,6 +21,85 @@ export function isOutOfStock(inventory: number): boolean {
 
 export function isLowStock(inventory: number): boolean {
   return inventory > 0 && inventory <= LOW_STOCK_THRESHOLD;
+}
+
+/** True when stock moves from above the threshold into the low-stock range. */
+export function crossedIntoLowStock(
+  previousInventory: number,
+  nextInventory: number,
+): boolean {
+  return (
+    previousInventory > LOW_STOCK_THRESHOLD && isLowStock(nextInventory)
+  );
+}
+
+export type LowStockAlert = {
+  productName: string;
+  productSlug: string;
+  color?: string | null;
+  size?: string | null;
+  remaining: number;
+};
+
+export function variantStockKey(colorId: string, sizeId: string): string {
+  return `${colorId || ""}:${sizeId || ""}`;
+}
+
+/** Collect alerts for variants that newly entered the low-stock range. */
+export function collectCrossedLowStockAlerts(params: {
+  productName: string;
+  productSlug: string;
+  previous: Array<{
+    colorId: string;
+    sizeId: string;
+    inventory: number;
+    colorName?: string | null;
+    sizeLabel?: string | null;
+  }>;
+  next: Array<{
+    colorId: string;
+    sizeId: string;
+    inventory: number;
+    colorName?: string | null;
+    sizeLabel?: string | null;
+  }>;
+}): LowStockAlert[] {
+  const previousByKey = new Map(
+    params.previous.map((variant) => [
+      variantStockKey(variant.colorId, variant.sizeId),
+      variant,
+    ]),
+  );
+
+  const alerts: LowStockAlert[] = [];
+  const seen = new Set<string>();
+
+  for (const variant of params.next) {
+    const key = variantStockKey(variant.colorId, variant.sizeId);
+    const previous = previousByKey.get(key);
+    if (!previous) {
+      continue;
+    }
+
+    if (!crossedIntoLowStock(previous.inventory, variant.inventory)) {
+      continue;
+    }
+
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+
+    alerts.push({
+      productName: params.productName,
+      productSlug: params.productSlug,
+      color: variant.colorName || previous.colorName || null,
+      size: variant.sizeLabel || previous.sizeLabel || null,
+      remaining: variant.inventory,
+    });
+  }
+
+  return alerts;
 }
 
 export function matchesVariantStock(

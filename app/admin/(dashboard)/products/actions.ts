@@ -15,6 +15,11 @@ import {
   slugifyProductName,
 } from "@/lib/products";
 import { computeFinalPrice } from "@/lib/pricing";
+import {
+  collectCrossedLowStockAlerts,
+  type LowStockAlert,
+} from "@/lib/inventory";
+import { sendLowStockAdminEmail } from "@/lib/order-emails";
 import { createClient } from "@/lib/supabase/server";
 import { hasAdminCredentials } from "@/lib/supabase/admin";
 import { deleteProductImagesFromStorage } from "@/lib/supabase/product-storage";
@@ -220,6 +225,18 @@ function parseVariants(value: FormDataEntryValue | null): VariantInput[] {
 
 function getTotalVariantInventory(variants: VariantInput[]): number {
   return variants.reduce((sum, variant) => sum + variant.inventory, 0);
+}
+
+async function notifyLowStockIfNeeded(alerts: LowStockAlert[]) {
+  if (alerts.length === 0) {
+    return;
+  }
+
+  try {
+    await sendLowStockAdminEmail(alerts);
+  } catch (error) {
+    console.error("Failed to send low stock admin email:", error);
+  }
 }
 
 async function revalidateProductPaths(slug?: string) {
@@ -485,7 +502,34 @@ export async function updateProduct(
     return { error: error.message || "Unable to update product." };
   }
 
+  const [allColors, allSizes] = await Promise.all([
+    getAllColors(),
+    getAllSizes(),
+  ]);
+  const colorNameById = new Map(allColors.map((color) => [color.id, color.name]));
+  const sizeLabelById = new Map(allSizes.map((size) => [size.id, size.label]));
+
+  const lowStockAlerts = collectCrossedLowStockAlerts({
+    productName: name,
+    productSlug: slug,
+    previous: (existing.variants ?? []).map((variant) => ({
+      colorId: variant.color_id ?? "",
+      sizeId: variant.size_id ?? "",
+      inventory: Number(variant.inventory ?? 0),
+      colorName: variant.color?.name ?? colorNameById.get(variant.color_id ?? "") ?? null,
+      sizeLabel: variant.size?.label ?? sizeLabelById.get(variant.size_id ?? "") ?? null,
+    })),
+    next: variants.map((variant) => ({
+      colorId: variant.colorId,
+      sizeId: variant.sizeId,
+      inventory: variant.inventory,
+      colorName: colorNameById.get(variant.colorId) ?? null,
+      sizeLabel: sizeLabelById.get(variant.sizeId) ?? null,
+    })),
+  });
+
   await replaceProductRelations(id, images, colors, sizes, variants);
+  await notifyLowStockIfNeeded(lowStockAlerts);
   await revalidateProductPaths(existing.slug);
   await revalidateProductPaths(slug);
 

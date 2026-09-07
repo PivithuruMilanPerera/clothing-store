@@ -226,7 +226,7 @@ function getVariantInventoryStatus(inventory: number) {
     return { label: "Out", className: "text-error" };
   }
 
-  if (inventory <= 10) {
+  if (inventory <= LOW_STOCK_THRESHOLD) {
     return { label: "Low", className: "text-orange-400" };
   }
 
@@ -1499,7 +1499,8 @@ export function ProductForm({
         />
         <p className="font-body mt-2 text-xs leading-normal text-on-surface-variant">
           Set stock per color, per size, or per color and size combination.
-          Variants at 10 or less show &quot;Low Stock&quot; on the storefront.
+          Variants at {LOW_STOCK_THRESHOLD} or less show &quot;Low Stock&quot; on the
+          storefront.
           At 0, that variant is out of stock.
         </p>
       </div>
