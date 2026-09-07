@@ -5,6 +5,7 @@ import { setupRegistrationProfile } from "@/lib/registration";
 import { deductInventoryForOrderItems } from "@/lib/order-inventory";
 import {
   buildOrderEmailPayload,
+  sendLowStockAdminEmail,
   sendOrderEmails,
 } from "@/lib/order-emails";
 import { calculateShipping } from "@/lib/checkout-constants";
@@ -651,6 +652,18 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           inventoryResult.error ||
           "Some items are no longer in stock. Please review your bag and try again.",
       };
+    }
+
+    if (inventoryResult.lowStockAlerts?.length) {
+      try {
+        await sendLowStockAdminEmail(inventoryResult.lowStockAlerts);
+      } catch (emailError) {
+        console.error("Failed to send low stock admin email:", emailError);
+      }
+    } else {
+      console.info(
+        "Low stock email skipped: no variants crossed into low stock on this order.",
+      );
     }
 
     const paymentMethod = input.paymentMethod;

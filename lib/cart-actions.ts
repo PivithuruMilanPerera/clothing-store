@@ -1,6 +1,6 @@
 "use server";
 
-import { findMatchingProductVariant } from "@/lib/inventory";
+import { findMatchingProductVariant, LOW_STOCK_THRESHOLD } from "@/lib/inventory";
 import { computeFinalPrice } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 import type { CartItem, CartStockStatus } from "@/lib/types";
@@ -230,7 +230,8 @@ export async function validateCartStock(
       }
 
       const isOutOfStock = availableStock <= 0;
-      const isLowStock = availableStock > 0 && availableStock <= 5;
+      const isLowStock =
+        availableStock > 0 && availableStock <= LOW_STOCK_THRESHOLD;
 
       result[item.id] = {
         id: item.id,

@@ -11,6 +11,7 @@ import {
 } from "@/lib/order-status";
 import type { CartItem, OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
+import { LOW_STOCK_THRESHOLD, type LowStockAlert } from "@/lib/inventory";
 
 const LOGO_CONTENT_ID = "velvorz-logo";
 
@@ -760,5 +761,135 @@ export async function sendReturnRequestAdminEmail(
     }
   } catch (error) {
     console.error("Return request email failed:", error);
+  }
+}
+
+function buildLowStockAdminHtml(alerts: LowStockAlert[]) {
+  const siteUrl = getSiteUrl();
+  const adminProductsUrl = `${siteUrl}/admin/products`;
+  const alertRows = alerts
+    .map((alert) => {
+      const meta = [alert.color, alert.size]
+        .filter((value): value is string => Boolean(value))
+        .join(" · ");
+
+      return `
+        <tr>
+          <td style="padding:12px 0;border-bottom:1px solid #e8e8e8;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111;">
+            <strong>${escapeHtml(alert.productName)}</strong>
+            ${meta ? `<div style="margin-top:4px;color:#666;font-size:12px;">${escapeHtml(meta)}</div>` : ""}
+            <div style="margin-top:4px;color:#666;font-size:12px;">${escapeHtml(alert.productSlug)}</div>
+          </td>
+          <td style="padding:12px 0;border-bottom:1px solid #e8e8e8;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#b45309;text-align:right;white-space:nowrap;vertical-align:top;font-weight:700;">
+            ${alert.remaining} left
+          </td>
+        </tr>`;
+    })
+    .join("");
+
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f4f4;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f4f4;padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #e5e5e5;">
+            <tr>
+              <td style="background:#f9f9f9;padding:28px 32px;text-align:center;border-bottom:1px solid #cfc4c5;">
+                <img src="cid:${LOGO_CONTENT_ID}" alt="Velvorz" width="180" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 28px 8px;font-family:Arial,Helvetica,sans-serif;">
+                <p style="margin:0 0 12px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#b45309;font-weight:700;">Admin alert</p>
+                <h1 style="margin:0;font-size:24px;line-height:1.25;color:#111;text-transform:uppercase;letter-spacing:0.02em;">Low stock reminder</h1>
+                <p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#555;">
+                  Inventory just dropped to ${LOW_STOCK_THRESHOLD} or fewer units (still in stock). Restock soon to avoid selling out.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 28px 0;font-family:Arial,Helvetica,sans-serif;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  ${alertRows}
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px;font-family:Arial,Helvetica,sans-serif;">
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#666;">
+                  Review and update stock in the admin products panel.
+                </p>
+                <p style="margin:16px 0 0;">
+                  <a href="${escapeHtml(adminProductsUrl)}" style="display:inline-block;padding:12px 18px;background:#111;color:#fff;text-decoration:none;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">Open products</a>
+                </p>
+                <p style="margin:16px 0 0;font-size:12px;color:#999;">
+                  <a href="${escapeHtml(siteUrl)}" style="color:#111;text-decoration:underline;">velvorz.com</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+/**
+ * Notifies the admin inbox when stock crosses from in-stock into the low-stock range.
+ * Failures are logged and never throw — checkout must still succeed.
+ */
+export async function sendLowStockAdminEmail(
+  alerts: LowStockAlert[],
+): Promise<void> {
+  if (alerts.length === 0) {
+    return;
+  }
+
+  const adminEmail = getOrderAdminEmail();
+  if (!adminEmail) {
+    console.error(
+      "Low stock email skipped: ORDER_ADMIN_EMAIL is not configured.",
+    );
+    return;
+  }
+
+  const resend = getResendClient();
+  if (!resend) {
+    console.error(
+      "Low stock email skipped: RESEND_API_KEY is not configured.",
+    );
+    return;
+  }
+
+  const firstName = alerts[0]?.productName ?? "product";
+  const subject =
+    alerts.length === 1
+      ? `Low stock — ${firstName} | VELVORZ`
+      : `Low stock — ${alerts.length} items | VELVORZ`;
+
+  try {
+    const result = await resend.emails.send({
+      from: getFromAddress(),
+      to: adminEmail,
+      subject,
+      html: buildLowStockAdminHtml(alerts),
+      attachments: [getLogoAttachment()],
+    });
+
+    if (result.error) {
+      console.error(
+        "Low stock email API error:",
+        result.error.message || result.error,
+      );
+      return;
+    }
+
+    console.info(
+      `Low stock email sent to ${adminEmail} for ${alerts.length} item(s).`,
+    );
+  } catch (error) {
+    console.error("Low stock email failed:", error);
   }
 }
