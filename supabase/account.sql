@@ -24,7 +24,7 @@ create table if not exists public.orders (
   user_id uuid not null references auth.users (id) on delete cascade,
   order_number text not null unique,
   status text not null default 'pending'
-    check (status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+    check (status in ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned')),
   payment_status text not null default 'pending'
     check (payment_status in ('pending', 'paid', 'failed')),
   subtotal numeric(10, 2) not null,

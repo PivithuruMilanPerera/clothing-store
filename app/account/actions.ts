@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isAdminUser, requireUser } from "@/lib/auth";
+import { sendReturnRequestAdminEmail } from "@/lib/order-emails";
 import { normalizePaymentStatus } from "@/lib/order-status";
 import { createClient } from "@/lib/supabase/server";
 import type { Address, Order, Profile, ReturnRequest } from "@/lib/types";
@@ -302,7 +303,9 @@ export async function createReturnRequest(
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id, status")
+    .select(
+      "id, status, order_number, customer_name, customer_email, customer_phone",
+    )
     .eq("id", orderId)
     .eq("user_id", user.id)
     .single();
@@ -336,6 +339,24 @@ export async function createReturnRequest(
 
   if (error) {
     return { error: "Unable to submit return request. Please try again." };
+  }
+
+  try {
+    await sendReturnRequestAdminEmail({
+      orderNumber: order.order_number,
+      customerName:
+        order.customer_name?.trim() ||
+        user.user_metadata?.full_name ||
+        "Customer",
+      customerEmail:
+        order.customer_email?.trim() || user.email || "",
+      customerPhone: order.customer_phone,
+      reason,
+      details: details || null,
+      submittedAt: new Date().toISOString(),
+    });
+  } catch (emailError) {
+    console.error("Failed to send return request admin email:", emailError);
   }
 
   revalidatePath("/account/returns");

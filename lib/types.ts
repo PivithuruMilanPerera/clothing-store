@@ -137,7 +137,8 @@ export type OrderStatus =
   | "processing"
   | "shipped"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "returned";
 
 export type PaymentMethod = "cash_on_delivery" | "card";
 
@@ -169,6 +170,7 @@ export type Order = {
   payment_method?: PaymentMethod | string;
   payment_status?: PaymentStatus;
   is_guest?: boolean;
+  tracking_number?: string | null;
   subtotal: number;
   shipping: number;
   total: number;

@@ -11,6 +11,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
+  returned: "Returned",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -61,6 +62,8 @@ export function orderStatusBadgeClass(status: OrderStatus) {
       return "border-green-600/30 bg-green-600/10 text-green-600";
     case "cancelled":
       return "border-error/30 bg-error/10 text-error";
+    case "returned":
+      return "border-slate-500/30 bg-slate-500/10 text-slate-600";
     case "shipped":
       return "border-primary/30 bg-primary/10 text-primary";
     case "processing":
