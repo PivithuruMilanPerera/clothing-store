@@ -36,6 +36,7 @@ const STATUS_FILTERS: { value: OrderStatusFilter; label: string }[] = [
   { value: "shipped", label: "Shipped" },
   { value: "delivered", label: "Delivered" },
   { value: "cancelled", label: "Cancelled" },
+  { value: "returned", label: "Returned" },
 ];
 
 const PAYMENT_FILTERS: { value: PaymentStatusFilter; label: string }[] = [
@@ -51,6 +52,7 @@ const ORDER_STATUS_OPTIONS: OrderStatus[] = [
   "shipped",
   "delivered",
   "cancelled",
+  "returned",
 ];
 
 const PAYMENT_STATUS_OPTIONS: PaymentStatus[] = ["pending", "paid", "failed"];
@@ -128,6 +130,9 @@ function OrderRow({ order }: { order: Order }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [trackingNumber, setTrackingNumber] = useState(
+    order.tracking_number ?? "",
+  );
   const items = order.order_items ?? [];
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const shippingLines = formatShippingAddress(order.shipping_address);
@@ -139,9 +144,19 @@ function OrderRow({ order }: { order: Order }) {
       return;
     }
 
+    const trimmedTracking = trackingNumber.trim();
+    if (nextStatus === "shipped" && !trimmedTracking) {
+      setActionError("Enter a tracking number before marking this order as shipped.");
+      return;
+    }
+
     setActionError(null);
     startTransition(async () => {
-      const result = await setOrderStatusAction(order.id, nextStatus);
+      const result = await setOrderStatusAction(
+        order.id,
+        nextStatus,
+        nextStatus === "shipped" ? trimmedTracking : undefined,
+      );
       if (!result.success) {
         setActionError(result.error || "Failed to update order status.");
         return;
@@ -182,7 +197,11 @@ function OrderRow({ order }: { order: Order }) {
     <li className="border border-outline-variant bg-surface-container-lowest">
       <button
         type="button"
-        onClick={() => setDetailsOpen(true)}
+        onClick={() => {
+          setTrackingNumber(order.tracking_number ?? "");
+          setActionError(null);
+          setDetailsOpen(true);
+        }}
         className="w-full px-5 py-4 text-left md:px-6"
       >
         <div className="flex w-full flex-wrap items-start gap-x-3 gap-y-3">
@@ -338,6 +357,20 @@ function OrderRow({ order }: { order: Order }) {
                   </select>
                 </label>
               </div>
+
+              <label className="mt-3 block">
+                <span className="mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                  Tracking number
+                </span>
+                <input
+                  type="text"
+                  value={trackingNumber}
+                  disabled={isPending}
+                  onChange={(event) => setTrackingNumber(event.target.value)}
+                  placeholder="Required when marking as shipped"
+                  className="font-body w-full border border-outline-variant/50 px-3 py-2 text-sm disabled:opacity-60"
+                />
+              </label>
 
               {isCod && paymentStatus === "pending" ? (
                 <button

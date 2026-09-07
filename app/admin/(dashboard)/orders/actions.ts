@@ -23,8 +23,9 @@ export async function setOrderPaymentStatusAction(
 export async function setOrderStatusAction(
   orderId: string,
   status: OrderStatus,
+  trackingNumber?: string | null,
 ) {
-  const result = await updateOrderStatus(orderId, status);
+  const result = await updateOrderStatus(orderId, status, { trackingNumber });
   if (result.success) {
     revalidatePath("/admin/orders");
     revalidatePath("/account/orders");

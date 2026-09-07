@@ -60,6 +60,14 @@ export function OrderHistory({ orders }: OrderHistoryProps) {
                 <p className="font-body mt-1 text-sm text-on-surface-variant">
                   {formatPaymentMethodLabel(order.payment_method)}
                 </p>
+                {order.tracking_number ? (
+                  <p className="font-body mt-1 text-sm text-on-surface">
+                    Tracking:{" "}
+                    <span className="font-medium tabular-nums">
+                      {order.tracking_number}
+                    </span>
+                  </p>
+                ) : null}
               </div>
               <div className="text-right">
                 <div className="flex flex-wrap items-center justify-end gap-2">

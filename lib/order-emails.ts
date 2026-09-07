@@ -31,6 +31,7 @@ export type OrderEmailPayload = {
   paymentMethod: PaymentMethod | string;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
+  trackingNumber?: string | null;
   subtotal: number;
   shipping: number;
   total: number;
@@ -234,6 +235,14 @@ function renderEmailShell(options: {
                     <td style="padding:6px 0;font-size:13px;color:#666;">Order status</td>
                     <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;">${escapeHtml(ORDER_STATUS_LABELS[order.orderStatus])}</td>
                   </tr>
+                  ${
+                    order.trackingNumber
+                      ? `<tr>
+                    <td style="padding:6px 0;font-size:13px;color:#666;">Tracking number</td>
+                    <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;font-weight:700;">${escapeHtml(order.trackingNumber)}</td>
+                  </tr>`
+                      : ""
+                  }
                 </table>
               </td>
             </tr>
@@ -307,6 +316,86 @@ function buildAdminHtml(order: OrderEmailPayload) {
   });
 }
 
+const STATUS_UPDATE_COPY: Partial<
+  Record<
+    OrderStatus,
+    { title: string; intro: (firstName: string, orderNumber: string) => string; footer: string }
+  >
+> = {
+  processing: {
+    title: "Order is processing",
+    intro: (firstName, orderNumber) =>
+      `Hi ${firstName}, your order ${orderNumber} is now being prepared. We'll notify you again when it ships.`,
+    footer:
+      "You can track this order from your account. If you have any questions, reply to this email or contact our support team.",
+  },
+  shipped: {
+    title: "Order has shipped",
+    intro: (firstName, orderNumber) =>
+      `Hi ${firstName}, great news — your order ${orderNumber} is on its way.`,
+    footer:
+      "Use the tracking number above to follow your delivery. If you have any questions, reply to this email or contact our support team.",
+  },
+  delivered: {
+    title: "Order delivered",
+    intro: (firstName, orderNumber) =>
+      `Hi ${firstName}, your order ${orderNumber} has been marked as delivered. We hope you love it.`,
+    footer:
+      "Thank you for shopping with VELVORZ. If anything looks off with your order, reply to this email or contact our support team.",
+  },
+  cancelled: {
+    title: "Order cancelled",
+    intro: (firstName, orderNumber) =>
+      `Hi ${firstName}, your order ${orderNumber} has been cancelled.`,
+    footer:
+      "If you did not expect this change or need help with a replacement order, reply to this email or contact our support team.",
+  },
+  returned: {
+    title: "Order returned",
+    intro: (firstName, orderNumber) =>
+      `Hi ${firstName}, your return for order ${orderNumber} has been completed.`,
+    footer:
+      "If you have questions about your return or refund, reply to this email or contact our support team.",
+  },
+};
+
+function buildStatusUpdateHtml(order: OrderEmailPayload) {
+  const firstName = order.customerName.split(" ")[0] || "there";
+  const copy = STATUS_UPDATE_COPY[order.orderStatus];
+  const trackingNote = order.trackingNumber
+    ? ` Your tracking number is ${order.trackingNumber}.`
+    : "";
+
+  if (!copy) {
+    return renderEmailShell({
+      title: "Order status updated",
+      intro: `Hi ${firstName}, the status of your order ${order.orderNumber} is now ${ORDER_STATUS_LABELS[order.orderStatus]}.${trackingNote}`,
+      order,
+      highlightLabel: "Status update",
+      footerNote:
+        "If you have any questions, reply to this email or contact our support team.",
+    });
+  }
+
+  const intro =
+    order.orderStatus === "shipped"
+      ? `${copy.intro(firstName, order.orderNumber)}${trackingNote}`
+      : copy.intro(firstName, order.orderNumber);
+
+  return renderEmailShell({
+    title: copy.title,
+    intro,
+    order,
+    highlightLabel: ORDER_STATUS_LABELS[order.orderStatus],
+    footerNote: copy.footer,
+  });
+}
+
+function statusUpdateSubject(order: OrderEmailPayload) {
+  const label = ORDER_STATUS_LABELS[order.orderStatus];
+  return `Order ${label.toLowerCase()} — ${order.orderNumber} | VELVORZ`;
+}
+
 export function buildOrderEmailPayload(input: {
   orderId: string;
   orderNumber: string;
@@ -316,6 +405,7 @@ export function buildOrderEmailPayload(input: {
   paymentMethod: PaymentMethod | string;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
+  trackingNumber?: string | null;
   subtotal: number;
   shipping: number;
   total: number;
@@ -331,6 +421,7 @@ export function buildOrderEmailPayload(input: {
     paymentMethod: input.paymentMethod,
     paymentStatus: input.paymentStatus,
     orderStatus: input.orderStatus,
+    trackingNumber: input.trackingNumber?.trim() || null,
     subtotal: input.subtotal,
     shipping: input.shipping,
     total: input.total,
@@ -342,6 +433,98 @@ export function buildOrderEmailPayload(input: {
       size: item.size,
       quantity: item.quantity,
       unitPrice: item.price,
+    })),
+  };
+}
+
+function readShippingField(
+  address: Record<string, string> | null | undefined,
+  ...keys: string[]
+) {
+  if (!address) {
+    return "";
+  }
+
+  for (const key of keys) {
+    const value = address[key]?.trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+/** Builds an email payload from a persisted order + line items. */
+export function buildOrderEmailPayloadFromOrder(order: {
+  id: string;
+  order_number: string;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  payment_method?: PaymentMethod | string | null;
+  payment_status?: PaymentStatus | string | null;
+  status: OrderStatus;
+  tracking_number?: string | null;
+  subtotal: number;
+  shipping: number;
+  total: number;
+  shipping_address?: Record<string, string> | null;
+  created_at: string;
+  order_items?: Array<{
+    product_name: string;
+    color: string | null;
+    size: string | null;
+    quantity: number;
+    unit_price: number;
+  }>;
+}): OrderEmailPayload {
+  const address = order.shipping_address ?? null;
+  const fullName =
+    readShippingField(address, "fullName") ||
+    [readShippingField(address, "firstName"), readShippingField(address, "lastName")]
+      .filter(Boolean)
+      .join(" ") ||
+    order.customer_name?.trim() ||
+    "Customer";
+  const email =
+    order.customer_email?.trim() ||
+    readShippingField(address, "email");
+  const phone =
+    order.customer_phone?.trim() ||
+    readShippingField(address, "phone");
+
+  return {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    customerName: fullName,
+    customerEmail: email,
+    customerPhone: phone,
+    paymentMethod: order.payment_method || "cash_on_delivery",
+    paymentStatus: normalizePaymentStatus(order.payment_status),
+    orderStatus: order.status,
+    trackingNumber: order.tracking_number?.trim() || null,
+    subtotal: Number(order.subtotal) || 0,
+    shipping: Number(order.shipping) || 0,
+    total: Number(order.total) || 0,
+    shippingAddress: {
+      fullName,
+      line1: readShippingField(address, "line1"),
+      line2: readShippingField(address, "line2"),
+      city: readShippingField(address, "city"),
+      state: readShippingField(address, "state"),
+      postalCode: readShippingField(address, "postalCode", "postal_code"),
+      country: readShippingField(address, "country") || "Sri Lanka",
+      phone,
+      email,
+    },
+    createdAt: order.created_at,
+    items: (order.order_items ?? []).map((item) => ({
+      name: item.product_name,
+      color: item.color,
+      size: item.size,
+      quantity: item.quantity,
+      unitPrice: Number(item.unit_price) || 0,
     })),
   };
 }
@@ -391,5 +574,191 @@ export async function sendOrderEmails(order: OrderEmailPayload): Promise<void> {
     if (value?.error) {
       console.error("Order email API error:", value.error.message || value.error);
     }
+  }
+}
+
+/**
+ * Notifies the customer when an admin updates order fulfillment status.
+ * Failures are logged and never throw — status updates must still succeed.
+ */
+export async function sendOrderStatusUpdateEmail(
+  order: OrderEmailPayload,
+): Promise<void> {
+  if (!order.customerEmail?.trim()) {
+    console.error(
+      `Order status email skipped for ${order.orderNumber}: missing customer email.`,
+    );
+    return;
+  }
+
+  const resend = getResendClient();
+  if (!resend) {
+    console.error(
+      "Order status email skipped: RESEND_API_KEY is not configured.",
+    );
+    return;
+  }
+
+  try {
+    const result = await resend.emails.send({
+      from: getFromAddress(),
+      to: order.customerEmail,
+      subject: statusUpdateSubject(order),
+      html: buildStatusUpdateHtml(order),
+      attachments: [getLogoAttachment()],
+    });
+
+    if (result.error) {
+      console.error(
+        "Order status email API error:",
+        result.error.message || result.error,
+      );
+    }
+  } catch (error) {
+    console.error("Order status email failed:", error);
+  }
+}
+
+export type ReturnRequestEmailPayload = {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string | null;
+  reason: string;
+  details?: string | null;
+  submittedAt: string;
+};
+
+function buildReturnRequestAdminHtml(payload: ReturnRequestEmailPayload) {
+  const submittedAt = new Date(payload.submittedAt).toLocaleString("en-LK", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  const siteUrl = getSiteUrl();
+  const details = payload.details?.trim();
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Return request received</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f4f4f4;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f4f4;padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #e5e5e5;">
+            <tr>
+              <td style="background:#f9f9f9;padding:28px 32px;text-align:center;border-bottom:1px solid #cfc4c5;">
+                <img src="cid:${LOGO_CONTENT_ID}" alt="Velvorz" width="180" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 28px 8px;font-family:Arial,Helvetica,sans-serif;">
+                <p style="margin:0 0 12px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#166534;font-weight:700;">Admin alert</p>
+                <h1 style="margin:0;font-size:24px;line-height:1.25;color:#111;text-transform:uppercase;letter-spacing:0.02em;">Return request received</h1>
+                <p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#555;">
+                  A customer submitted a return request for order ${escapeHtml(payload.orderNumber)}.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 28px 0;font-family:Arial,Helvetica,sans-serif;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="padding:6px 0;font-size:13px;color:#666;width:40%;">Order</td>
+                    <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;font-weight:700;">${escapeHtml(payload.orderNumber)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:6px 0;font-size:13px;color:#666;">Customer</td>
+                    <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;">${escapeHtml(payload.customerName)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:6px 0;font-size:13px;color:#666;">Email</td>
+                    <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;">${escapeHtml(payload.customerEmail || "—")}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:6px 0;font-size:13px;color:#666;">Phone</td>
+                    <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;">${escapeHtml(payload.customerPhone?.trim() || "—")}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:6px 0;font-size:13px;color:#666;">Reason</td>
+                    <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;">${escapeHtml(payload.reason)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:6px 0;font-size:13px;color:#666;">Submitted</td>
+                    <td style="padding:6px 0;font-size:13px;color:#111;text-align:right;">${escapeHtml(submittedAt)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            ${
+              details
+                ? `<tr>
+              <td style="padding:24px 28px 0;font-family:Arial,Helvetica,sans-serif;">
+                <h2 style="margin:0 0 10px;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:#111;">Additional details</h2>
+                <p style="margin:0;font-size:14px;line-height:1.7;color:#444;">${escapeHtml(details)}</p>
+              </td>
+            </tr>`
+                : ""
+            }
+            <tr>
+              <td style="padding:28px;font-family:Arial,Helvetica,sans-serif;">
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#666;">Review this return request and update the customer when a decision is made.</p>
+                <p style="margin:16px 0 0;font-size:12px;color:#999;">
+                  <a href="${escapeHtml(siteUrl)}" style="color:#111;text-decoration:underline;">velvorz.com</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+/**
+ * Notifies the admin inbox when a customer submits a return request.
+ * Failures are logged and never throw — the return request must still succeed.
+ */
+export async function sendReturnRequestAdminEmail(
+  payload: ReturnRequestEmailPayload,
+): Promise<void> {
+  const adminEmail = getOrderAdminEmail();
+  if (!adminEmail) {
+    console.error(
+      "Return request email skipped: ORDER_ADMIN_EMAIL is not configured.",
+    );
+    return;
+  }
+
+  const resend = getResendClient();
+  if (!resend) {
+    console.error(
+      "Return request email skipped: RESEND_API_KEY is not configured.",
+    );
+    return;
+  }
+
+  try {
+    const result = await resend.emails.send({
+      from: getFromAddress(),
+      to: adminEmail,
+      replyTo: payload.customerEmail || undefined,
+      subject: `Return request received — ${payload.orderNumber} | VELVORZ`,
+      html: buildReturnRequestAdminHtml(payload),
+      attachments: [getLogoAttachment()],
+    });
+
+    if (result.error) {
+      console.error(
+        "Return request email API error:",
+        result.error.message || result.error,
+      );
+    }
+  } catch (error) {
+    console.error("Return request email failed:", error);
   }
 }
