@@ -13,8 +13,8 @@ export const contactIntro = {
 export const contactDetails: ContactDetail[] = [
   {
     label: "Email",
-    value: "support@velvorz.com",
-    href: "mailto:support@velvorz.com",
+    value: "hello@velvorz.com",
+    href: "mailto:hello@velvorz.com",
   },
   {
     label: "Phone",

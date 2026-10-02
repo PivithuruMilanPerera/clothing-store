@@ -195,8 +195,9 @@ export const footerColumns: FooterColumn[] = [
   {
     title: "Legal",
     links: [
+      { label: "Refund Policy", href: "/refund-policy" },
       { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Service", href: "/terms" },
+      { label: "Terms & Conditions", href: "/terms" },
     ],
   },
   {
@@ -204,7 +205,7 @@ export const footerColumns: FooterColumn[] = [
     links: [
       { label: "About Us", href: "/about" },
       { label: "Shipping", href: "/shipping" },
-      { label: "Returns", href: "/returns" },
+      { label: "Returns", href: "/account/returns" },
       { label: "Contact", href: "/contact" },
     ],
   },
