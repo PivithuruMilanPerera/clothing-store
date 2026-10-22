@@ -256,7 +256,7 @@ export function EmailTemplatesAdmin({ templates }: { templates: ResolvedEmailTem
           ))}
         </nav>
 
-        <section className="border border-outline-variant bg-surface-container-lowest p-5">
+        <section className="min-w-0 border border-outline-variant bg-surface-container-lowest p-4 sm:p-5">
           {selected ? (
             <>
               <h2 className="font-headline mb-4 text-lg font-bold uppercase text-on-surface">

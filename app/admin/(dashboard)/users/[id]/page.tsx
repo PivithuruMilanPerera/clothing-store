@@ -78,7 +78,7 @@ export default async function AdminCustomerProfilePage({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 md:gap-4">
         <AdminStatCard label="Orders" value={customer.stats.orderCount} />
         <AdminStatCard
           label="Total spent"
@@ -125,25 +125,27 @@ export default async function AdminCustomerProfilePage({
                   <li key={order.id}>
                     <Link
                       href={`/admin/orders/${order.id}`}
-                      className="flex flex-wrap items-center gap-3 py-3 hover:bg-surface-container-low"
+                      className="flex flex-col gap-2 py-3 hover:bg-surface-container-low sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
                     >
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 sm:flex-1">
                         <p className="font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface">
                           {order.order_number}
                         </p>
-                        <p className="font-body mt-1 truncate text-xs text-on-surface-variant">
+                        <p className="font-body mt-1 line-clamp-2 text-xs text-on-surface-variant sm:truncate">
                           {formatAdminDate(order.created_at)} ·{" "}
                           {items
                             .map((item) => `${item.product_name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`)
                             .join(", ") || "No items"}
                         </p>
                       </div>
-                      <AdminBadge className={orderStatusBadgeClass(order.status)}>
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </AdminBadge>
-                      <p className="font-body w-28 text-right text-sm font-medium tabular-nums">
-                        {formatPrice(Number(order.total))}
-                      </p>
+                      <div className="flex flex-wrap items-center justify-between gap-2 sm:contents">
+                        <AdminBadge className={orderStatusBadgeClass(order.status)}>
+                          {ORDER_STATUS_LABELS[order.status]}
+                        </AdminBadge>
+                        <p className="font-body text-sm font-medium tabular-nums sm:w-28 sm:text-right">
+                          {formatPrice(Number(order.total))}
+                        </p>
+                      </div>
                     </Link>
                   </li>
                 );

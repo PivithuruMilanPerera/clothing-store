@@ -101,7 +101,7 @@ export function AboutContent() {
           <Button href="/shop">Shop Collection</Button>
           <Link
             href="/contact"
-            className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-flex items-center justify-center border border-primary px-6 py-3 text-primary hover:bg-primary hover:text-on-primary"
+            className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-flex max-md:w-full max-md:min-h-14 items-center justify-center border border-primary px-6 py-3 text-primary hover:bg-primary hover:text-on-primary"
           >
             Contact Us
           </Link>

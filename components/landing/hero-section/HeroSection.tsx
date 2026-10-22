@@ -119,7 +119,7 @@ export function HeroSection({ slides }: HeroSectionProps) {
                       </h1>
                     ) : null}
                     {slide.cta?.label && slide.cta?.href ? (
-                      <div className="mt-4 md:mt-5">
+                      <div className="mt-4 w-full md:mt-5 md:w-auto">
                         <Button variant="inverted" href={slide.cta.href}>
                           {slide.cta.label}
                         </Button>

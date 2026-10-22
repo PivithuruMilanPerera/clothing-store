@@ -37,7 +37,7 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = Boolean(disabled || isLoading);
   const classes = cn(
-    "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-flex items-center justify-center gap-2 px-6 py-3 cursor-pointer transition-none disabled:pointer-events-none disabled:opacity-50",
+    "font-label text-xs font-bold uppercase tracking-[0.15em] leading-none inline-flex max-md:w-full max-md:min-h-14 max-md:min-w-48 items-center justify-center gap-2 px-6 py-3 cursor-pointer transition-none disabled:pointer-events-none disabled:opacity-50",
     variantStyles[variant],
     className,
   );

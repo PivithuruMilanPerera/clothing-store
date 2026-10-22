@@ -16,9 +16,9 @@ export function RevenueChart({ buckets }: { buckets: RevenueBucket[] }) {
 
   return (
     <div>
-      <div className="flex h-56 items-end gap-[2px] border-b border-outline-variant">
+      <div className="flex h-40 items-end gap-px border-b border-outline-variant sm:h-56 sm:gap-[2px]">
         {buckets.map((bucket) => (
-          <div key={bucket.key} className="group relative flex h-full flex-1 items-end">
+          <div key={bucket.key} className="group relative flex h-full min-w-0 flex-1 items-end">
             <div
               className="w-full bg-primary/80 transition-colors group-hover:bg-primary"
               style={{ height: `${(bucket.gross / max) * 100}%`, minHeight: bucket.gross > 0 ? 2 : 0 }}
@@ -44,7 +44,7 @@ export function RevenueChart({ buckets }: { buckets: RevenueBucket[] }) {
         {buckets.map((bucket, index) => (
           <span
             key={bucket.key}
-            className="font-body flex-1 truncate text-center text-[10px] text-on-surface-variant"
+            className="font-body min-w-0 flex-1 truncate text-center text-[10px] text-on-surface-variant"
           >
             {index % labelEvery === 0 ? bucket.label : ""}
           </span>

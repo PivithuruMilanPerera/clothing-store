@@ -116,9 +116,9 @@ export default async function AdminOrderDetailPage({
                 {items.map((item) => (
                   <li
                     key={item.id}
-                    className="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-4 py-3"
+                    className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3 py-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:gap-4"
                   >
-                    <div className="relative aspect-square w-14 overflow-hidden bg-surface-container-low">
+                    <div className="relative aspect-square w-12 overflow-hidden bg-surface-container-low sm:w-14">
                       {item.image ? (
                         <Image
                           src={item.image}
