@@ -3,12 +3,13 @@
 import { Lock, ShieldCheck, ShoppingBag, User } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  applyCouponCode,
   authenticateOrRegisterCustomer,
   checkEmailRegistered,
   getCheckoutCustomerData,
+  getCheckoutShippingQuote,
   placeOrder,
   type CheckoutCustomerData,
 } from "@/app/checkout/actions";
@@ -16,6 +17,7 @@ import { useCart } from "@/components/cart/cart-provider";
 import { Button } from "@/components/ui";
 import {
   COUNTRIES,
+  SRI_LANKA_DISTRICTS,
   SRI_LANKA_PROVINCES,
   US_STATES,
   calculateShipping,
@@ -26,7 +28,6 @@ import type { Address, CheckoutMode } from "@/lib/types";
 import { cn, formatPrice } from "@/lib/utils";
 
 export function CheckoutForm() {
-  const router = useRouter();
   const { items, subtotal, clearCart, isHydrated, hasOutOfStockItems } = useCart();
 
   // Customer & Auth state
@@ -54,6 +55,7 @@ export function CheckoutForm() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("Western Province");
   const [postalCode, setPostalCode] = useState("");
+  const [district, setDistrict] = useState("");
   const [phone, setPhone] = useState("");
   const [saveAddress, setSaveAddress] = useState(false);
 
@@ -81,8 +83,83 @@ export function CheckoutForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const shippingCost = calculateShipping(subtotal);
-  const total = subtotal + shippingCost;
+  // Delivery rate + coupon
+  const [shippingQuote, setShippingQuote] = useState<{
+    shipping: number;
+    areaLabel: string | null;
+    estimatedDays: string | null;
+  } | null>(null);
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+  } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+
+  const shippingCost = shippingQuote?.shipping ?? calculateShipping(subtotal);
+  const discount = appliedCoupon ? Math.min(appliedCoupon.discount, subtotal) : 0;
+  const total = Math.max(0, subtotal - discount) + shippingCost;
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const quote = await getCheckoutShippingQuote({
+          subtotal,
+          city,
+          district,
+          country,
+        });
+        if (!cancelled) setShippingQuote(quote);
+      } catch {
+        // Keep the estimate.
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [subtotal, city, district, country]);
+
+  const appliedCouponCode = appliedCoupon?.code;
+  useEffect(() => {
+    if (!appliedCouponCode) return;
+    let cancelled = false;
+
+    void applyCouponCode(appliedCouponCode, subtotal).then((result) => {
+      if (cancelled) return;
+      if (result.valid) {
+        setAppliedCoupon({ code: result.code, discount: result.discount });
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(result.error);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subtotal, appliedCouponCode]);
+
+  async function handleApplyCoupon() {
+    setCouponError("");
+    setIsApplyingCoupon(true);
+    try {
+      const result = await applyCouponCode(couponInput, subtotal);
+      if (result.valid) {
+        setAppliedCoupon({ code: result.code, discount: result.discount });
+        setCouponInput("");
+      } else {
+        setCouponError(result.error);
+      }
+    } catch {
+      setCouponError("Unable to apply this coupon right now.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }
 
   // Check if entered email is already registered in the system
   useEffect(() => {
@@ -101,7 +178,8 @@ export function CheckoutForm() {
           setMode("registered");
           setPasswordFeedback({
             type: "info",
-            message: "Existing account found. Sign in above, or enter your password below to continue.",
+            message:
+              "This email is already registered. Sign in to place your order.",
           });
         } else {
           setPasswordFeedback({ type: null, message: "" });
@@ -181,6 +259,8 @@ export function CheckoutForm() {
     setState(addr.state || "");
     setPostalCode(addr.postal_code || "");
     setCountry(addr.country || "Sri Lanka");
+    if (addr.phone) setPhone(addr.phone);
+    setDistrict(addr.district || "");
   }
 
   function handleAddressSelect(addrId: string) {
@@ -193,6 +273,7 @@ export function CheckoutForm() {
       setCity("");
       setState("Western Province");
       setPostalCode("");
+      setDistrict("");
     } else {
       const found = customerData?.addresses.find((a) => a.id === addrId);
       if (found) {
@@ -222,6 +303,7 @@ export function CheckoutForm() {
     setCity("");
     setState("Western Province");
     setPostalCode("");
+    setDistrict("");
   }
 
   // Handle Quick Inline Sign In
@@ -306,40 +388,70 @@ export function CheckoutForm() {
       return;
     }
 
-    if (!email.trim() || !email.includes("@")) {
-      setErrorMessage("Please provide a valid email address.");
+    const missingFields: string[] = [];
+    if (!email.trim() || !email.includes("@")) missingFields.push("email");
+    if (!firstName.trim()) missingFields.push("first name");
+    if (!lastName.trim()) missingFields.push("last name");
+    if (!country.trim()) missingFields.push("country");
+    if (!line1.trim()) missingFields.push("address");
+    if (!city.trim()) missingFields.push("city");
+    if (!state.trim()) missingFields.push("province or state");
+    if (!postalCode.trim()) missingFields.push("postal code");
+    if (
+      country === "Sri Lanka" &&
+      !(SRI_LANKA_DISTRICTS as readonly string[]).includes(district)
+    ) {
+      missingFields.push("district");
+    }
+    if (!phone.trim() || phone.trim().length < 7) missingFields.push("phone number");
+    if (
+      mode === "registered" &&
+      !customerData?.isLoggedIn &&
+      password.trim().length < 6
+    ) {
+      missingFields.push("password");
+    }
+
+    if (missingFields.length > 0) {
+      if (customerData?.isLoggedIn && !isEditingAddress) {
+        setIsEditingAddress(true);
+      }
+      setErrorMessage(
+        `Please complete the required fields before placing your order: ${missingFields.join(", ")}.`,
+      );
+      window.setTimeout(() => {
+        document.getElementById("checkout-error")?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 0);
       return;
     }
 
-    if (!firstName.trim() || !lastName.trim()) {
-      setErrorMessage("Please provide your first and last name.");
-      return;
-    }
-
-    if (!line1.trim()) {
-      setErrorMessage("Please provide your street address.");
-      return;
-    }
-
-    if (!city.trim() || !state.trim() || !postalCode.trim()) {
-      setErrorMessage("Please complete your city, state/province, and postal code.");
-      return;
-    }
-
-    if (!phone.trim() || phone.length < 7) {
-      setErrorMessage("Please enter a valid phone number for delivery coordination.");
-      return;
+    if (!customerData?.isLoggedIn && mode === "guest") {
+      try {
+        const registered = await checkEmailRegistered(email.trim());
+        if (registered.isRegistered) {
+          setIsEmailRegistered(true);
+          setMode("registered");
+          setPasswordFeedback({
+            type: "info",
+            message:
+              "This email is already registered. Sign in to place your order.",
+          });
+          setErrorMessage(
+            "This email is already registered. Sign in to place your order.",
+          );
+          return;
+        }
+      } catch {
+        setErrorMessage("Unable to verify this email. Please try again.");
+        return;
+      }
     }
 
     // If registered mode and not logged in, authenticate or register user
     if (mode === "registered" && !customerData?.isLoggedIn) {
-      if (!password || password.length < 6) {
-        setErrorMessage(
-          "Please enter a password to create your account.",
-        );
-        return;
-      }
-
       setIsVerifyingPassword(true);
       try {
         const res = await authenticateOrRegisterCustomer(email.trim(), password);
@@ -386,7 +498,9 @@ export function CheckoutForm() {
         state,
         postalCode,
         country,
+        district,
         phone,
+        couponCode: appliedCoupon?.code,
         paymentMethod: "cash_on_delivery",
         saveAddress,
         savedAddressId:
@@ -400,11 +514,11 @@ export function CheckoutForm() {
         return;
       }
 
-      // Navigate first, then clear — clearing before navigation re-renders
-      // the empty-bag state on this page and can interrupt the thank-you redirect.
+      // A full navigation leaves checkout even if the client router is still
+      // refreshing this page after the order action.
       const successUrl = `/checkout/success?orderNumber=${encodeURIComponent(res.orderNumber)}`;
-      router.replace(successUrl);
       clearCart();
+      window.location.assign(successUrl);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMessage(msg || "An unexpected error occurred.");
@@ -470,7 +584,7 @@ export function CheckoutForm() {
           </span>
         </div>
 
-        <form onSubmit={handleSubmitOrder} className="space-y-8">
+        <form id="checkout-form" noValidate onSubmit={handleSubmitOrder} className="space-y-8">
           {/* ── 1. Account ── */}
           <section className="rounded-sm border border-outline-variant bg-surface-container-lowest p-6 shadow-xs">
             {customerData?.isLoggedIn && customerData.user ? (
@@ -578,9 +692,19 @@ export function CheckoutForm() {
 
                 <button
                   type="button"
-                  onClick={() => setMode("guest")}
+                  onClick={() => {
+                    if (isEmailRegistered) return;
+                    setMode("guest");
+                  }}
+                  disabled={isEmailRegistered}
+                  title={
+                    isEmailRegistered
+                      ? "This email is already registered. Sign in to place your order."
+                      : undefined
+                  }
                   className={cn(
                     "flex flex-col items-center justify-center gap-1 rounded-md py-2.5 px-3 text-center transition-all",
+                    isEmailRegistered && "cursor-not-allowed opacity-40",
                     mode === "guest"
                       ? "bg-primary text-on-primary shadow-sm"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest",
@@ -611,6 +735,12 @@ export function CheckoutForm() {
               </div>
             ) : null}
 
+            {!customerData?.isLoggedIn && isEmailRegistered ? (
+              <p className="mt-3 font-body text-xs font-medium text-primary">
+                This email is already registered. Guest checkout is unavailable. Sign in to place your order.
+              </p>
+            ) : null}
+
             {/* Logged-in: collapsed delivery summary (form hidden until Edit) */}
             {customerData?.isLoggedIn && !isEditingAddress ? (
               <div className="mt-4 space-y-1 rounded-md border border-outline-variant bg-surface-container-low/40 p-4">
@@ -626,8 +756,8 @@ export function CheckoutForm() {
                   {[line1, line2].filter(Boolean).join(", ") || "No address on file"}
                 </p>
                 <p className="font-body text-sm text-on-surface-variant">
-                  {[city, state, postalCode].filter(Boolean).join(", ")}
-                  {country ? (city || state || postalCode ? ` · ${country}` : country) : ""}
+                  {[city, district, state, postalCode].filter(Boolean).join(", ")}
+                  {country ? (city || district || state || postalCode ? ` · ${country}` : country) : ""}
                 </p>
                 {phone ? (
                   <p className="font-body text-sm text-on-surface-variant">Phone: {phone}</p>
@@ -678,8 +808,13 @@ export function CheckoutForm() {
                           {addr.full_name}
                         </p>
                         <p className="font-body text-xs text-on-surface-variant">
-                          {addr.line1}, {addr.city}
+                          {[addr.line1, addr.city, addr.district].filter(Boolean).join(", ")}
                         </p>
+                        {addr.phone ? (
+                          <p className="font-body text-xs text-on-surface-variant">
+                            {addr.phone}
+                          </p>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -938,6 +1073,31 @@ export function CheckoutForm() {
                 </div>
               </div>
 
+              {country === "Sri Lanka" ? (
+                <div>
+                  <label
+                    htmlFor="checkout-district"
+                    className="font-label block text-[11px] font-bold uppercase tracking-[0.1em] text-on-surface-variant"
+                  >
+                    District *
+                  </label>
+                  <select
+                    id="checkout-district"
+                    required
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="font-body mt-1.5 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-3.5 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select district</option>
+                    {SRI_LANKA_DISTRICTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
               {/* Phone */}
               <div>
                 <label
@@ -976,7 +1136,9 @@ export function CheckoutForm() {
                   <span className="font-body text-xs text-on-surface-variant">
                     {customerData?.isLoggedIn
                       ? "Save this address for future orders"
-                      : "Save this address to my new account"}
+                      : isEmailRegistered
+                        ? "Save this address to my account"
+                        : "Save this address to my new account"}
                   </span>
                 </label>
               )}
@@ -990,10 +1152,12 @@ export function CheckoutForm() {
                   <Lock className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-headline text-sm font-bold uppercase text-on-surface">
-                      Create Account Password
+                      {isEmailRegistered ? "Sign in to continue" : "Create Account Password"}
                     </h3>
                     <p className="font-body mt-1 text-xs text-on-surface-variant">
-                      Choose a password to register your account when you place this order.
+                      {isEmailRegistered
+                        ? "This email is already registered. Enter your password to sign in and place this order."
+                        : "Choose a password to register your account when you place this order."}
                     </p>
                     <p className="font-body mt-2 text-sm text-on-surface-variant">
                       Already have an account?{" "}
@@ -1088,7 +1252,7 @@ export function CheckoutForm() {
 
           {/* Error Banner */}
           {errorMessage ? (
-            <div className="rounded-md border border-error/30 bg-error/10 p-4">
+            <div id="checkout-error" className="rounded-md border border-error/30 bg-error/10 p-4">
               <p className="font-body text-sm font-semibold text-error">
                 {errorMessage}
               </p>
@@ -1149,15 +1313,84 @@ export function CheckoutForm() {
             ))}
           </ul>
 
-          <dl className="mt-6 space-y-3 border-t border-outline-variant pt-4">
+          <div className="mt-6 border-t border-outline-variant pt-4">
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-green-600/30 bg-green-600/10 px-3 py-2">
+                <p className="font-label text-[11px] font-bold uppercase tracking-[0.1em] text-green-700">
+                  Coupon {appliedCoupon.code} applied
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppliedCoupon(null);
+                    setCouponError("");
+                  }}
+                  className="font-body text-xs text-on-surface-variant underline underline-offset-4 hover:text-on-surface"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleApplyCoupon();
+                    }
+                  }}
+                  placeholder="Coupon code"
+                  aria-label="Coupon code"
+                  className="font-body min-w-0 flex-1 rounded-md border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm uppercase text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => void handleApplyCoupon()}
+                  disabled={isApplyingCoupon || !couponInput.trim()}
+                  className="px-4 py-2"
+                >
+                  {isApplyingCoupon ? "Applying..." : "Apply"}
+                </Button>
+              </div>
+            )}
+            {couponError ? (
+              <p className="font-body mt-2 text-xs text-error">{couponError}</p>
+            ) : null}
+          </div>
+
+          <dl className="mt-4 space-y-3 border-t border-outline-variant pt-4">
             <div className="flex items-center justify-between text-sm">
               <dt className="font-body text-on-surface-variant">Subtotal</dt>
               <dd className="font-body font-medium text-on-surface tabular-nums">
                 {formatPrice(subtotal)}
               </dd>
             </div>
+            {discount > 0 ? (
+              <div className="flex items-center justify-between text-sm">
+                <dt className="font-body text-on-surface-variant">
+                  Discount ({appliedCoupon?.code})
+                </dt>
+                <dd className="font-body font-medium text-green-700 tabular-nums">
+                  -{formatPrice(discount)}
+                </dd>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between text-sm">
-              <dt className="font-body text-on-surface-variant">Shipping</dt>
+              <dt className="font-body text-on-surface-variant">
+                Shipping
+                {shippingQuote?.areaLabel ? (
+                  <span className="block text-[11px]">
+                    {shippingQuote.areaLabel}
+                    {shippingQuote.estimatedDays
+                      ? ` · ${shippingQuote.estimatedDays}`
+                      : ""}
+                  </span>
+                ) : null}
+              </dt>
               <dd className="font-body font-medium text-on-surface tabular-nums">
                 {shippingCost === 0 ? "Free" : formatPrice(shippingCost)}
               </dd>
@@ -1174,8 +1407,8 @@ export function CheckoutForm() {
 
           <div className="mt-6">
             <Button
-              type="button"
-              onClick={handleSubmitOrder}
+              type="submit"
+              form="checkout-form"
               disabled={isSubmitting || hasOutOfStockItems || items.length === 0}
               className="w-full py-4 text-xs font-bold uppercase tracking-[0.15em]"
             >

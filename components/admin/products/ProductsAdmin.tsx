@@ -24,7 +24,11 @@ import { useProductImageUploader } from "@/hooks/useProductImageUploader";
 import type { CategoryTreeNode } from "@/lib/category-types";
 import { normalizeHexColor } from "@/lib/color-utils";
 import { flattenCategoryTreeOptions } from "@/lib/category-tree";
-import { getProductStockState, LOW_STOCK_THRESHOLD } from "@/lib/inventory";
+import {
+  getProductStockState,
+  LOW_STOCK_THRESHOLD,
+  resolveLowStockThreshold,
+} from "@/lib/inventory";
 import type {
   Brand,
   Color,
@@ -44,13 +48,19 @@ type ProductsAdminProps = {
   allColors: Color[];
   allSizes: Size[];
   allBrands: Brand[];
+  initialSearch?: string;
+  initialStockFilter?: ProductStockFilter;
 };
 
 type ImageEntry = { url: string; alt: string; colorId: string };
 type ColorDraft = { name: string; hex: string };
 type VariantEntry = { colorId: string; sizeId: string; inventory: number };
 type ProductStatusFilter = "all" | "active" | "draft";
-type ProductStockFilter = "all" | "in-stock" | "low-stock" | "out-of-stock";
+export type ProductStockFilter =
+  | "all"
+  | "in-stock"
+  | "low-stock"
+  | "out-of-stock";
 type ProductSortOption = "newest" | "oldest" | "price-asc" | "price-desc";
 
 const PRODUCTS_PER_PAGE = 15;
@@ -76,7 +86,10 @@ function getCategoryLabel(
 }
 
 function getProductStockSummary(product: StoreProductWithRelations) {
-  const stockState = getProductStockState(product.variants ?? []);
+  const stockState = getProductStockState(
+    product.variants ?? [],
+    resolveLowStockThreshold(product.low_stock_threshold),
+  );
 
   if (stockState.isOutOfStock) {
     return {
@@ -138,7 +151,10 @@ function matchesProductStockFilter(
   product: StoreProductWithRelations,
   stockFilter: ProductStockFilter,
 ): boolean {
-  const stockState = getProductStockState(product.variants ?? []);
+  const stockState = getProductStockState(
+    product.variants ?? [],
+    resolveLowStockThreshold(product.low_stock_threshold),
+  );
 
   if (stockFilter === "in-stock") {
     return !stockState.isOutOfStock && !stockState.isLowStock;
@@ -1593,7 +1609,10 @@ function ProductInventoryView({
 }) {
   const colors = product.colors.map((entry) => entry.color);
   const sizes = product.sizes.map((entry) => entry.size);
-  const stockState = getProductStockState(product.variants ?? []);
+  const stockState = getProductStockState(
+    product.variants ?? [],
+    resolveLowStockThreshold(product.low_stock_threshold),
+  );
   const stockSummary = getProductStockSummary(product);
 
   const renderInventoryCell = (colorId: string, sizeId: string) => {
@@ -1789,7 +1808,10 @@ function ProductRow({
     product.discount_type,
     product.discount_value ?? 0,
   );
-  const stockState = getProductStockState(product.variants ?? []);
+  const stockState = getProductStockState(
+    product.variants ?? [],
+    resolveLowStockThreshold(product.low_stock_threshold),
+  );
   const stockSummary = getProductStockSummary(product);
   const categoryLabel = getCategoryLabel(categoryTree, product.category_id);
 
@@ -2054,11 +2076,14 @@ export function ProductsAdmin({
   allColors,
   allSizes,
   allBrands,
+  initialSearch = "",
+  initialStockFilter = "all",
 }: ProductsAdminProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<ProductStatusFilter>("all");
-  const [stockFilter, setStockFilter] = useState<ProductStockFilter>("all");
+  const [stockFilter, setStockFilter] =
+    useState<ProductStockFilter>(initialStockFilter);
   const [sortFilter, setSortFilter] = useState<ProductSortOption>("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [showMobileFilters, setShowMobileFilters] = useState(false);

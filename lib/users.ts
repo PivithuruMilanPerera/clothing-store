@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
+import { normalizeOrder } from "@/lib/orders";
 import { createAdminClient, hasAdminCredentials } from "@/lib/supabase/admin";
-import type { Address, Profile } from "@/lib/types";
+import type { Address, Order, Profile, ReturnRequest } from "@/lib/types";
 
 const ADMIN_USERS_PAGE_SIZE = 1000;
 
@@ -179,4 +180,142 @@ export async function getAllUsersForAdmin(): Promise<AdminUser[]> {
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
+}
+
+export type CustomerProfile = {
+  id: string;
+  kind: AdminUserKind;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  created_at: string | null;
+  addresses: Address[];
+  orders: Order[];
+  returns: ReturnRequest[];
+  stats: {
+    orderCount: number;
+    totalSpent: number;
+    averageOrderValue: number;
+    itemsPurchased: number;
+    firstOrderAt: string | null;
+    lastOrderAt: string | null;
+  };
+};
+
+export async function getCustomerProfileForAdmin(
+  rawId: string,
+): Promise<CustomerProfile | null> {
+  await requireAdmin();
+
+  if (!hasAdminCredentials()) {
+    return null;
+  }
+
+  const supabase = createAdminClient();
+  const id = decodeURIComponent(rawId);
+  const isGuest = id.startsWith("guest:");
+
+  let profile: Profile | null = null;
+  let addresses: Address[] = [];
+  let email = isGuest ? id.slice("guest:".length) : "";
+
+  if (!isGuest) {
+    const [{ data: profileRow }, { data: addressRows }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, email, phone, created_at, updated_at")
+        .eq("id", id)
+        .maybeSingle(),
+      supabase
+        .from("addresses")
+        .select("*")
+        .eq("user_id", id)
+        .order("is_default", { ascending: false }),
+    ]);
+
+    if (!profileRow) {
+      return null;
+    }
+
+    profile = profileRow as Profile;
+    addresses = (addressRows ?? []) as Address[];
+    email = profile.email;
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+  const selectOrders = () =>
+    supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .order("created_at", { ascending: false });
+
+  const [byUser, byGuestEmail] = await Promise.all([
+    isGuest ? Promise.resolve({ data: [], error: null }) : selectOrders().eq("user_id", id),
+    normalizedEmail
+      ? selectOrders().is("user_id", null).ilike("customer_email", normalizedEmail)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  for (const result of [byUser, byGuestEmail]) {
+    if (result.error) {
+      console.error("Failed to load customer orders:", result.error.message);
+    }
+  }
+
+  const orderRows = [...(byUser.data ?? []), ...(byGuestEmail.data ?? [])].sort(
+    (a, b) => String(b.created_at).localeCompare(String(a.created_at)),
+  );
+
+  const orders = ((orderRows ?? []) as Order[]).map(normalizeOrder);
+
+  if (isGuest && orders.length === 0) {
+    return null;
+  }
+
+  const { data: returnRows } = orders.length
+    ? await supabase
+        .from("return_requests")
+        .select("*, orders(order_number, created_at)")
+        .in(
+          "order_id",
+          orders.map((order) => order.id),
+        )
+        .order("created_at", { ascending: false })
+    : { data: [] };
+
+  const spendingOrders = orders.filter(
+    (order) =>
+      order.status !== "cancelled" &&
+      order.status !== "returned" &&
+      order.payment_status !== "failed",
+  );
+  const totalSpent = spendingOrders.reduce((sum, order) => sum + Number(order.total), 0);
+  const latestGuestOrder = orders[0];
+
+  return {
+    id,
+    kind: isGuest ? "guest" : "registered",
+    full_name:
+      profile?.full_name?.trim() ||
+      latestGuestOrder?.customer_name?.trim() ||
+      "Customer",
+    email: profile?.email ?? latestGuestOrder?.customer_email ?? email,
+    phone: profile?.phone ?? latestGuestOrder?.customer_phone ?? null,
+    created_at: profile?.created_at ?? orders[orders.length - 1]?.created_at ?? null,
+    addresses,
+    orders,
+    returns: (returnRows ?? []) as ReturnRequest[],
+    stats: {
+      orderCount: orders.length,
+      totalSpent,
+      averageOrderValue: spendingOrders.length ? totalSpent / spendingOrders.length : 0,
+      itemsPurchased: spendingOrders.reduce(
+        (sum, order) =>
+          sum + (order.order_items ?? []).reduce((count, item) => count + item.quantity, 0),
+        0,
+      ),
+      firstOrderAt: orders[orders.length - 1]?.created_at ?? null,
+      lastOrderAt: orders[0]?.created_at ?? null,
+    },
+  };
 }

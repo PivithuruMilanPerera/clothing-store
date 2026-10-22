@@ -28,6 +28,34 @@ export const SRI_LANKA_PROVINCES = [
   "Uva Province",
 ];
 
+export const SRI_LANKA_DISTRICTS = [
+  "Ampara",
+  "Anuradhapura",
+  "Badulla",
+  "Batticaloa",
+  "Colombo",
+  "Galle",
+  "Gampaha",
+  "Hambantota",
+  "Jaffna",
+  "Kalutara",
+  "Kandy",
+  "Kegalle",
+  "Kilinochchi",
+  "Kurunegala",
+  "Mannar",
+  "Matale",
+  "Matara",
+  "Monaragala",
+  "Mullaitivu",
+  "Nuwara Eliya",
+  "Polonnaruwa",
+  "Puttalam",
+  "Ratnapura",
+  "Trincomalee",
+  "Vavuniya",
+] as const;
+
 export const US_STATES = [
   "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
   "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
@@ -38,8 +66,8 @@ export const US_STATES = [
   "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
 ];
 
+/** Client-side estimate shown until the configured delivery rate for the address loads. */
 export function calculateShipping(subtotal: number): number {
   if (subtotal <= 0) return 0;
-  // Free standard shipping on orders over Rs. 5000 (or flat Rs. 350 standard shipping)
   return subtotal >= 5000 ? 0 : 350;
 }

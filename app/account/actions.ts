@@ -265,6 +265,18 @@ export async function getOrders(): Promise<Order[]> {
 export async function getReturnRequests(): Promise<ReturnRequest[]> {
   const { user, supabase } = await getSupabaseForUser();
 
+  const withItem = await supabase
+    .from("return_requests")
+    .select(
+      "*, orders(order_number, created_at), order_items!order_item_id(product_name, image, color, size)",
+    )
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (!withItem.error) {
+    return (withItem.data ?? []) as ReturnRequest[];
+  }
+
   const { data, error } = await supabase
     .from("return_requests")
     .select("*, orders(order_number, created_at)")
@@ -293,49 +305,81 @@ export async function createReturnRequest(
 ): Promise<ActionState> {
   const { user, supabase } = await getSupabaseForUser();
 
-  const orderId = String(formData.get("orderId") ?? "").trim();
+  const orderItemId = String(formData.get("orderItemId") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
   const details = String(formData.get("details") ?? "").trim();
 
-  if (!orderId || !reason) {
-    return { error: "Please select an order and provide a reason." };
+  if (!orderItemId || !reason) {
+    return { error: "Please select an item and provide a reason." };
   }
 
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
+  const { data: item, error: itemError } = await supabase
+    .from("order_items")
     .select(
-      "id, status, order_number, customer_name, customer_email, customer_phone",
+      "id, product_name, color, size, orders!inner(id, status, order_number, customer_name, customer_email, customer_phone, user_id)",
     )
-    .eq("id", orderId)
-    .eq("user_id", user.id)
-    .single();
+    .eq("id", orderItemId)
+    .eq("orders.user_id", user.id)
+    .maybeSingle();
 
-  if (orderError || !order) {
-    return { error: "Selected order was not found." };
+  const order = Array.isArray(item?.orders) ? item.orders[0] : item?.orders;
+
+  if (itemError || !item || !order) {
+    return { error: "Selected item was not found." };
   }
 
   if (!["delivered", "shipped"].includes(order.status)) {
-    return { error: "This order is not eligible for a return request." };
+    return { error: "This item is not eligible for a return request." };
   }
 
-  const { data: existing } = await supabase
+  const itemLabel = [item.product_name, item.color, item.size]
+    .filter(Boolean)
+    .join(" · ");
+
+  const { data: existingItem } = await supabase
     .from("return_requests")
     .select("id")
-    .eq("order_id", orderId)
+    .eq("order_item_id", item.id)
     .eq("user_id", user.id)
     .neq("status", "rejected")
     .maybeSingle();
 
-  if (existing) {
+  if (existingItem) {
+    return { error: "A return request already exists for this item." };
+  }
+
+  const { data: existingOrder } = await supabase
+    .from("return_requests")
+    .select("id, order_item_id")
+    .eq("order_id", order.id)
+    .eq("user_id", user.id)
+    .neq("status", "rejected");
+
+  const blocksWholeOrder = (existingOrder ?? []).some(
+    (request) => !request.order_item_id,
+  );
+  if (blocksWholeOrder) {
     return { error: "A return request already exists for this order." };
   }
 
-  const { error } = await supabase.from("return_requests").insert({
+  const payload = {
     user_id: user.id,
-    order_id: orderId,
+    order_id: order.id,
+    order_item_id: item.id,
     reason,
     details: details || null,
-  });
+  };
+
+  let { error } = await supabase.from("return_requests").insert(payload);
+
+  if (error && /order_item_id/.test(error.message)) {
+    ({ error } = await supabase.from("return_requests").insert({
+      user_id: user.id,
+      order_id: order.id,
+      reason,
+      details: details ? `${itemLabel}\n${details}` : itemLabel,
+    }));
+  }
 
   if (error) {
     return { error: "Unable to submit return request. Please try again." };
@@ -348,11 +392,11 @@ export async function createReturnRequest(
         order.customer_name?.trim() ||
         user.user_metadata?.full_name ||
         "Customer",
-      customerEmail:
-        order.customer_email?.trim() || user.email || "",
+      customerEmail: order.customer_email?.trim() || user.email || "",
       customerPhone: order.customer_phone,
       reason,
       details: details || null,
+      itemLabel,
       submittedAt: new Date().toISOString(),
     });
   } catch (emailError) {

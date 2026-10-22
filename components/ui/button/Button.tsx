@@ -16,7 +16,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-on-primary border border-primary hover:bg-on-primary hover:border-on-primary hover:text-primary",
+    "bg-primary text-on-primary border border-primary hover:bg-on-primary hover:border-primary hover:text-primary",
   secondary:
     "bg-surface-container-low text-on-surface border border-transparent hover:bg-primary hover:text-on-primary",
   inverted:

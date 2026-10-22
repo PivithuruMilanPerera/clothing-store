@@ -127,6 +127,8 @@ export type Address = {
   state: string;
   postal_code: string;
   country: string;
+  phone?: string | null;
+  district?: string | null;
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -171,6 +173,8 @@ export type Order = {
   payment_status?: PaymentStatus;
   is_guest?: boolean;
   tracking_number?: string | null;
+  coupon_code?: string | null;
+  discount?: number | null;
   subtotal: number;
   shipping: number;
   total: number;
@@ -211,12 +215,16 @@ export type ReturnRequest = {
   id: string;
   user_id: string;
   order_id: string;
+  order_item_id?: string | null;
   reason: string;
   details: string | null;
   status: ReturnStatus;
+  admin_note?: string | null;
+  resolved_at?: string | null;
   created_at: string;
   updated_at: string;
   orders?: Pick<Order, "order_number" | "created_at">;
+  order_items?: Pick<OrderItem, "product_name" | "image" | "color" | "size"> | null;
 };
 
 export type AccountNavItem = {

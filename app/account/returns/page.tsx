@@ -20,7 +20,7 @@ export default async function ReturnsPage() {
     <div>
       <h2 className="font-headline text-lg font-bold leading-tight md:text-2xl text-on-surface">Return Requests</h2>
       <p className="font-body text-base leading-normal mt-2 text-on-surface-variant">
-        Request a return for eligible orders and track existing requests.
+        Request a return for an item from a delivered or shipped order.
       </p>
       <div className="mt-8">
         <ReturnRequests requests={requests} eligibleOrders={eligibleOrders} />
