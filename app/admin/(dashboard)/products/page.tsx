@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import { ProductsAdmin } from "@/components/admin/products/ProductsAdmin";
+import {
+  ProductsAdmin,
+  type ProductStockFilter,
+} from "@/components/admin/products/ProductsAdmin";
 import { getCategoryTree } from "@/lib/categories";
 import type { CategoryTreeNode } from "@/lib/category-types";
 import {
@@ -15,7 +18,21 @@ export const metadata: Metadata = {
   description: "Manage products.",
 };
 
-export default async function AdminProductsPage() {
+const STOCK_FILTERS: ProductStockFilter[] = [
+  "all",
+  "in-stock",
+  "low-stock",
+  "out-of-stock",
+];
+
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; stock?: string }>;
+}) {
+  const { q, stock } = await searchParams;
+  const initialStockFilter = STOCK_FILTERS.find((value) => value === stock) ?? "all";
+
   const [products, categoryTree, schemaStatus, allColors, allSizes, allBrands] =
     await Promise.all([
       getAllProductsForAdmin(),
@@ -34,6 +51,8 @@ export default async function AdminProductsPage() {
       allColors={allColors}
       allSizes={allSizes}
       allBrands={allBrands}
+      initialSearch={typeof q === "string" ? q : ""}
+      initialStockFilter={initialStockFilter}
     />
   );
 }

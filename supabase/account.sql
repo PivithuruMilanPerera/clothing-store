@@ -14,6 +14,8 @@ create table if not exists public.addresses (
   state text not null,
   postal_code text not null,
   country text not null default 'Sri Lanka',
+  phone text,
+  district text,
   is_default boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -52,6 +54,7 @@ create table if not exists public.return_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   order_id uuid not null references public.orders (id) on delete cascade,
+  order_item_id uuid references public.order_items (id) on delete set null,
   reason text not null,
   details text,
   status text not null default 'pending'

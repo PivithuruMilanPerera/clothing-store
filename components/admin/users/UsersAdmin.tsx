@@ -1,10 +1,9 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { SearchIcon } from "@/components/icons";
-import { Popup } from "@/components/ui";
-import type { Address } from "@/lib/types";
 import type { AdminUser, AdminUserKind } from "@/lib/users";
 import { cn } from "@/lib/utils";
 
@@ -28,18 +27,6 @@ function formatDate(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function formatAddress(address: Address) {
-  const lines = [
-    address.full_name,
-    address.line1,
-    address.line2,
-    [address.city, address.state, address.postal_code].filter(Boolean).join(", "),
-    address.country,
-  ].filter((line) => Boolean(line?.trim()));
-
-  return lines;
 }
 
 function formatShippingAddress(address: AdminUser["shipping_address"]) {
@@ -115,7 +102,6 @@ function KindBadge({ kind }: { kind: AdminUserKind }) {
 }
 
 function UserRow({ user }: { user: AdminUser }) {
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const isGuest = user.kind === "guest";
   const addressCount = user.addresses.length;
   const defaultAddress =
@@ -123,11 +109,10 @@ function UserRow({ user }: { user: AdminUser }) {
   const shippingLines = formatShippingAddress(user.shipping_address);
 
   return (
-    <li className="border border-outline-variant bg-surface-container-lowest">
-      <button
-        type="button"
-        onClick={() => setDetailsOpen(true)}
-        className="w-full px-5 py-4 text-left md:px-6"
+    <li className="border border-outline-variant bg-surface-container-lowest hover:border-primary">
+      <Link
+        href={`/admin/users/${encodeURIComponent(user.id)}`}
+        className="block w-full px-5 py-4 text-left md:px-6"
       >
         <div className="flex w-full flex-wrap items-start gap-x-3 gap-y-3">
           <div className="min-w-0 flex-1">
@@ -189,151 +174,7 @@ function UserRow({ user }: { user: AdminUser }) {
             </div>
           </div>
         </div>
-      </button>
-
-      <Popup
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        title={user.full_name || (isGuest ? "Guest details" : "User details")}
-        description={`${isGuest ? "Guest" : "Registered"} · ${user.email}`}
-        size="lg"
-      >
-        <div className="space-y-6">
-          <div>
-            <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-              {isGuest ? "Guest checkout" : "Account"}
-            </p>
-            <dl className="mt-3 space-y-3">
-              <div>
-                <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                  Type
-                </dt>
-                <dd className="mt-1">
-                  <KindBadge kind={user.kind} />
-                </dd>
-              </div>
-              <div>
-                <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                  Full name
-                </dt>
-                <dd className="font-body mt-1 text-sm text-on-surface">
-                  {user.full_name || "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                  Email
-                </dt>
-                <dd className="font-body mt-1 text-sm text-on-surface">
-                  {user.email}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                  Phone
-                </dt>
-                <dd className="font-body mt-1 text-sm text-on-surface">
-                  {user.phone || "—"}
-                </dd>
-              </div>
-              {!isGuest ? (
-                <div>
-                  <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                    User ID
-                  </dt>
-                  <dd className="font-body mt-1 break-all text-sm text-on-surface">
-                    {user.id}
-                  </dd>
-                </div>
-              ) : (
-                <div>
-                  <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                    Orders
-                  </dt>
-                  <dd className="font-body mt-1 text-sm text-on-surface">
-                    {user.order_count} guest order
-                    {user.order_count === 1 ? "" : "s"}
-                  </dd>
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                    {isGuest ? "First order" : "Created"}
-                  </dt>
-                  <dd className="font-body mt-1 text-sm text-on-surface">
-                    {formatDate(user.created_at)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                    {isGuest ? "Latest order" : "Updated"}
-                  </dt>
-                  <dd className="font-body mt-1 text-sm text-on-surface">
-                    {formatDate(user.updated_at)}
-                  </dd>
-                </div>
-              </div>
-            </dl>
-          </div>
-
-          {isGuest ? (
-            <div>
-              <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                Latest shipping address
-              </p>
-              {shippingLines ? (
-                <div className="font-body mt-3 space-y-0.5 text-sm text-on-surface">
-                  {shippingLines.map((line) => (
-                    <p key={`${user.id}-${line}`}>{line}</p>
-                  ))}
-                </div>
-              ) : (
-                <p className="font-body mt-3 text-sm text-on-surface-variant">
-                  No shipping address.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                Addresses
-              </p>
-              {user.addresses.length === 0 ? (
-                <p className="font-body mt-3 text-sm text-on-surface-variant">
-                  No saved addresses.
-                </p>
-              ) : (
-                <ul className="mt-3 divide-y divide-outline-variant border-t border-outline-variant">
-                  {user.addresses.map((address) => {
-                    const lines = formatAddress(address);
-
-                    return (
-                      <li key={address.id} className="py-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface">
-                            {address.label}
-                          </p>
-                          {address.is_default ? (
-                            <span className="font-label border border-outline-variant px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                              Default
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="font-body mt-2 space-y-0.5 text-sm text-on-surface">
-                          {lines.map((line) => (
-                            <p key={`${address.id}-${line}`}>{line}</p>
-                          ))}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      </Popup>
+      </Link>
     </li>
   );
 }

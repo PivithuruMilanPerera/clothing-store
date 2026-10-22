@@ -14,7 +14,8 @@ import type {
   StoreProductVariant,
   StoreProductWithRelations,
 } from "@/lib/product-types";
-import { getProductStockState } from "@/lib/inventory";
+import { getProductStockState, resolveLowStockThreshold } from "@/lib/inventory";
+import { getLowStockThresholdMap } from "@/lib/stock-thresholds";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductDetail, ProductImage, ShopProduct } from "@/lib/types";
 import { computeFinalPrice } from "@/lib/pricing";
@@ -292,7 +293,10 @@ export function toShopProduct(
   const discountType = product.discount_type;
   const discountValue = Number(product.discount_value ?? 0);
   const computedPricing = computeFinalPrice(basePrice, discountType, discountValue);
-  const stockState = getProductStockState(product.variants ?? []);
+  const stockState = getProductStockState(
+    product.variants ?? [],
+    resolveLowStockThreshold(product.low_stock_threshold),
+  );
 
   return {
     id: product.id,
@@ -350,6 +354,25 @@ export function toProductDetail(
   };
 }
 
+async function withStockThresholds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  products: StoreProductWithRelations[],
+): Promise<StoreProductWithRelations[]> {
+  if (products.length === 0) {
+    return products;
+  }
+
+  const thresholds = await getLowStockThresholdMap(
+    supabase,
+    products.length === 1 ? { ids: [products[0]!.id] } : undefined,
+  );
+
+  return products.map((product) => ({
+    ...product,
+    low_stock_threshold: thresholds.get(product.id) ?? null,
+  }));
+}
+
 const PRODUCT_SELECT = `
   id,
   category_id,
@@ -387,7 +410,10 @@ export async function getPublishedProducts(): Promise<StoreProductWithRelations[
     return [];
   }
 
-  return (data as unknown as ProductRow[]).map(mapProductRow);
+  return withStockThresholds(
+    supabase,
+    (data as unknown as ProductRow[]).map(mapProductRow),
+  );
 }
 
 export async function getAllProductsForAdmin(): Promise<StoreProductWithRelations[]> {
@@ -401,7 +427,10 @@ export async function getAllProductsForAdmin(): Promise<StoreProductWithRelation
     return [];
   }
 
-  return (data as unknown as ProductRow[]).map(mapProductRow);
+  return withStockThresholds(
+    supabase,
+    (data as unknown as ProductRow[]).map(mapProductRow),
+  );
 }
 
 export async function getProductBySlugFromDb(
@@ -419,7 +448,10 @@ export async function getProductBySlugFromDb(
     return null;
   }
 
-  return mapProductRow(data as unknown as ProductRow);
+  const [product] = await withStockThresholds(supabase, [
+    mapProductRow(data as unknown as ProductRow),
+  ]);
+  return product ?? null;
 }
 
 export async function getProductsByCategoryIds(
@@ -441,7 +473,10 @@ export async function getProductsByCategoryIds(
     return [];
   }
 
-  return (data as unknown as ProductRow[]).map(mapProductRow);
+  return withStockThresholds(
+    supabase,
+    (data as unknown as ProductRow[]).map(mapProductRow),
+  );
 }
 
 export function slugifyProductName(name: string): string {

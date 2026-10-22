@@ -18,8 +18,8 @@ export const contactDetails: ContactDetail[] = [
   },
   {
     label: "Phone",
-    value: "+1 (212) 555-0198",
-    href: "tel:+12125550198",
+    value: "+94728925071",
+    href: "tel:+94728925071",
   },
   {
     label: "Hours",

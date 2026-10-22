@@ -17,6 +17,7 @@ import {
 import { computeFinalPrice } from "@/lib/pricing";
 import {
   collectCrossedLowStockAlerts,
+  resolveLowStockThreshold,
   type LowStockAlert,
 } from "@/lib/inventory";
 import { sendLowStockAdminEmail } from "@/lib/order-emails";
@@ -512,6 +513,7 @@ export async function updateProduct(
   const lowStockAlerts = collectCrossedLowStockAlerts({
     productName: name,
     productSlug: slug,
+    threshold: resolveLowStockThreshold(existing.low_stock_threshold),
     previous: (existing.variants ?? []).map((variant) => ({
       colorId: variant.color_id ?? "",
       sizeId: variant.size_id ?? "",

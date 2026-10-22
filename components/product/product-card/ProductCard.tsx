@@ -29,7 +29,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
   );
   const ribbonLabel = saleLabel ?? product.badge;
   const isOutOfStock = product.inventory <= 0;
-  const isLowStock = product.isLowStock ?? false;
 
   return (
     <article
@@ -55,6 +54,20 @@ export function ProductCard({ product, className }: ProductCardProps) {
               variant={saleLabel ? "sale" : "default"}
             />
           ) : null}
+
+          {isOutOfStock ? (
+            <span className="pointer-events-none absolute top-1.5 left-1.5 z-10 bg-neutral-900 px-1.5 py-1 font-label text-[8px] font-bold uppercase leading-none tracking-[0.08em] text-white sm:top-2 sm:left-2 sm:px-2 sm:text-[9px] sm:tracking-[0.12em] md:top-2.5 md:left-2.5 md:px-2.5 md:text-[10px] md:tracking-[0.14em]">
+              Out of stock
+            </span>
+          ) : (
+            <span className="pointer-events-none absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-1 font-label text-[8px] font-bold uppercase leading-none tracking-[0.08em] text-green-600 sm:top-2 sm:left-2 sm:gap-1.5 sm:text-[9px] sm:tracking-[0.12em] md:top-2.5 md:left-2.5 md:text-[10px] md:tracking-[0.14em]">
+              <span className="relative flex h-1.5 w-1.5 shrink-0 md:h-2 md:w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75 motion-reduce:animate-none" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-600 md:h-2 md:w-2" />
+              </span>
+              In stock
+            </span>
+          )}
 
           <ProductCardShopNow />
         </div>
@@ -119,20 +132,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
               ))}
             </div>
           ) : null}
-
-          {isOutOfStock ? (
-            <p className="font-label mt-auto pt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant md:text-[11px]">
-              Out of stock
-            </p>
-          ) : isLowStock ? (
-            <p className="font-label mt-auto pt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-orange-400 md:text-[11px]">
-              Low Stock
-            </p>
-          ) : (
-            <p className="font-label mt-auto pt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-green-600 md:text-[11px]">
-              In Stock
-            </p>
-          )}
         </div>
       </Link>
     </article>

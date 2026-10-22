@@ -2,9 +2,11 @@ import {
   crossedIntoLowStock,
   findMatchingProductVariant,
   getTotalInventory,
+  resolveLowStockThreshold,
   type LowStockAlert,
   type ProductVariantRow,
 } from "@/lib/inventory";
+import { getLowStockThresholdMap } from "@/lib/stock-thresholds";
 import type { CartItem } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -80,6 +82,7 @@ export async function deductInventoryForOrderItems(
   const productMap = new Map(
     (products as OrderProductRow[]).map((product) => [product.slug, product]),
   );
+  const thresholdMap = await getLowStockThresholdMap(dbClient, { slugs });
   const variantProductIds = new Set<string>();
   const lowStockAlerts: LowStockAlert[] = [];
   const alertKeys = new Set<string>();
@@ -110,6 +113,7 @@ export async function deductInventoryForOrderItems(
     const variants = Array.isArray(product.product_variants)
       ? product.product_variants
       : [];
+    const threshold = resolveLowStockThreshold(thresholdMap.get(product.slug));
 
     if (variants.length > 0) {
       const matchedVariant = findMatchingProductVariant(
@@ -149,13 +153,14 @@ export async function deductInventoryForOrderItems(
       // Keep in-memory stock accurate if the same variant appears twice.
       matchedVariant.inventory = nextInventory;
 
-      if (crossedIntoLowStock(previousInventory, nextInventory)) {
+      if (crossedIntoLowStock(previousInventory, nextInventory, threshold)) {
         pushLowStockAlert({
           productName: product.name,
           productSlug: product.slug,
           color: item.colorName || item.color || null,
           size: item.size || null,
           remaining: nextInventory,
+          threshold,
         });
       }
 
@@ -185,13 +190,14 @@ export async function deductInventoryForOrderItems(
 
     product.inventory = nextInventory;
 
-    if (crossedIntoLowStock(previousInventory, nextInventory)) {
+    if (crossedIntoLowStock(previousInventory, nextInventory, threshold)) {
       pushLowStockAlert({
         productName: product.name,
         productSlug: product.slug,
         color: item.colorName || item.color || null,
         size: item.size || null,
         remaining: nextInventory,
+        threshold,
       });
     }
   }

@@ -19,17 +19,29 @@ export function isOutOfStock(inventory: number): boolean {
   return inventory <= 0;
 }
 
-export function isLowStock(inventory: number): boolean {
-  return inventory > 0 && inventory <= LOW_STOCK_THRESHOLD;
+export function resolveLowStockThreshold(
+  threshold: number | null | undefined,
+): number {
+  return typeof threshold === "number" && Number.isFinite(threshold) && threshold >= 0
+    ? threshold
+    : LOW_STOCK_THRESHOLD;
+}
+
+export function isLowStock(
+  inventory: number,
+  threshold: number = LOW_STOCK_THRESHOLD,
+): boolean {
+  return inventory > 0 && inventory <= threshold;
 }
 
 /** True when stock moves from above the threshold into the low-stock range. */
 export function crossedIntoLowStock(
   previousInventory: number,
   nextInventory: number,
+  threshold: number = LOW_STOCK_THRESHOLD,
 ): boolean {
   return (
-    previousInventory > LOW_STOCK_THRESHOLD && isLowStock(nextInventory)
+    previousInventory > threshold && isLowStock(nextInventory, threshold)
   );
 }
 
@@ -39,6 +51,7 @@ export type LowStockAlert = {
   color?: string | null;
   size?: string | null;
   remaining: number;
+  threshold?: number;
 };
 
 export function variantStockKey(colorId: string, sizeId: string): string {
@@ -49,6 +62,7 @@ export function variantStockKey(colorId: string, sizeId: string): string {
 export function collectCrossedLowStockAlerts(params: {
   productName: string;
   productSlug: string;
+  threshold?: number;
   previous: Array<{
     colorId: string;
     sizeId: string;
@@ -81,7 +95,9 @@ export function collectCrossedLowStockAlerts(params: {
       continue;
     }
 
-    if (!crossedIntoLowStock(previous.inventory, variant.inventory)) {
+    if (
+      !crossedIntoLowStock(previous.inventory, variant.inventory, params.threshold)
+    ) {
       continue;
     }
 
@@ -96,6 +112,7 @@ export function collectCrossedLowStockAlerts(params: {
       color: variant.colorName || previous.colorName || null,
       size: variant.sizeLabel || previous.sizeLabel || null,
       remaining: variant.inventory,
+      threshold: params.threshold ?? LOW_STOCK_THRESHOLD,
     });
   }
 
@@ -136,7 +153,10 @@ export function getVariantInventory(
   );
 }
 
-export function getProductStockState(variants: Array<{ inventory: number }>) {
+export function getProductStockState(
+  variants: Array<{ inventory: number }>,
+  threshold: number = LOW_STOCK_THRESHOLD,
+) {
   const totalInventory = getTotalInventory(variants);
 
   return {
@@ -144,7 +164,7 @@ export function getProductStockState(variants: Array<{ inventory: number }>) {
     isOutOfStock: isOutOfStock(totalInventory),
     isLowStock:
       !isOutOfStock(totalInventory) &&
-      variants.some((variant) => isLowStock(variant.inventory)),
+      variants.some((variant) => isLowStock(variant.inventory, threshold)),
   };
 }
 

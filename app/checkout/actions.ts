@@ -8,7 +8,15 @@ import {
   sendLowStockAdminEmail,
   sendOrderEmails,
 } from "@/lib/order-emails";
-import { calculateShipping } from "@/lib/checkout-constants";
+import {
+  mapCouponRow,
+  normalizeCouponCode,
+  validateCoupon,
+  type Coupon,
+} from "@/lib/coupons";
+import { SRI_LANKA_DISTRICTS } from "@/lib/checkout-constants";
+import { getShippingQuote, type ShippingQuote } from "@/lib/delivery";
+import { recordOrderHistory } from "@/lib/order-history";
 import {
   normalizePaymentStatus,
   resolveCheckoutStatuses,
@@ -42,7 +50,9 @@ export type PlaceOrderInput = {
   state: string;
   postalCode: string;
   country: string;
+  district?: string;
   phone: string;
+  couponCode?: string;
   paymentMethod: PaymentMethod;
   cardPaymentOutcome?: "success" | "failed" | "incomplete";
   saveAddress?: boolean;
@@ -56,6 +66,69 @@ export type PlaceOrderResult = {
   orderId?: string;
   error?: string;
 };
+
+async function findCouponByCode(code: string): Promise<Coupon | null> {
+  const normalized = normalizeCouponCode(code);
+  if (!normalized || !hasAdminCredentials()) {
+    return null;
+  }
+
+  const { data, error } = await createAdminClient()
+    .from("coupons")
+    .select("*")
+    .ilike("code", normalized)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return mapCouponRow(data);
+}
+
+export async function getCheckoutShippingQuote(input: {
+  subtotal: number;
+  city?: string;
+  district?: string;
+  country?: string;
+}): Promise<ShippingQuote> {
+  return getShippingQuote({
+    subtotal: Math.max(0, Number(input.subtotal) || 0),
+    city: input.city,
+    district: input.country === "Sri Lanka" ? input.district : null,
+  });
+}
+
+export type ApplyCouponResult =
+  | { valid: true; code: string; discount: number; description: string }
+  | { valid: false; error: string };
+
+export async function applyCouponCode(
+  code: string,
+  subtotal: number,
+): Promise<ApplyCouponResult> {
+  if (!normalizeCouponCode(code)) {
+    return { valid: false, error: "Enter a coupon code." };
+  }
+
+  try {
+    const coupon = await findCouponByCode(code);
+    const result = validateCoupon(coupon, Math.max(0, Number(subtotal) || 0));
+
+    if (!result.valid) {
+      return result;
+    }
+
+    return {
+      valid: true,
+      code: result.coupon.code.toUpperCase(),
+      discount: result.discount,
+      description: result.coupon.description,
+    };
+  } catch {
+    return { valid: false, error: "Unable to apply this coupon right now." };
+  }
+}
 
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString().slice(-6);
@@ -437,6 +510,15 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       return { success: false, error: "Please enter a valid phone number." };
     }
 
+    const district =
+      country === "Sri Lanka" ? input.district?.trim() || "" : "";
+    if (
+      country === "Sri Lanka" &&
+      !(SRI_LANKA_DISTRICTS as readonly string[]).includes(district)
+    ) {
+      return { success: false, error: "Please select a district." };
+    }
+
     const supabase = await createClient();
     const {
       data: { user: currentUser },
@@ -444,6 +526,25 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     let userId: string | null = currentUser?.id ?? null;
     let isGuest = input.mode === "guest";
+
+    const signedInAsThisEmail =
+      currentUser?.email?.trim().toLowerCase() === email.trim().toLowerCase();
+
+    // A registered email cannot place an order as a guest. They must sign in first.
+    if (isGuest && !signedInAsThisEmail) {
+      const existingAccount = await checkEmailRegistered(email);
+      if (existingAccount.isRegistered) {
+        return {
+          success: false,
+          error:
+            "This email is already registered. Sign in to place your order.",
+        };
+      }
+    }
+
+    if (signedInAsThisEmail) {
+      isGuest = false;
+    }
 
     // 3. Handle Registration or Sign-in if user selected Registered mode but is not yet logged in
     if (input.mode === "registered" && !userId) {
@@ -569,44 +670,64 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       }
     }
 
-    // 4. Optionally save a new address when the customer explicitly opts in
-    if (userId && input.saveAddress && !input.savedAddressId) {
+    // 4. Save delivery details, including phone and district, for the next order
+    if (userId && (input.saveAddress || input.savedAddressId)) {
       try {
-        const { data: existingAddresses } = await supabase
-          .from("addresses")
-          .select("id, full_name, line1, line2, city, state, postal_code, country")
-          .eq("user_id", userId);
-
-        const incomingAddress = {
-          fullName,
-          line1,
-          line2: input.line2?.trim(),
-          city,
-          state,
-          postalCode,
-          country,
+        const deliveryFields = {
+          phone: phone || null,
+          district: country === "Sri Lanka" ? district || null : null,
+          updated_at: new Date().toISOString(),
         };
 
-        const alreadySaved = (existingAddresses ?? []).some((address) =>
-          addressesMatch(address, incomingAddress),
-        );
+        if (input.savedAddressId) {
+          await supabase
+            .from("addresses")
+            .update(deliveryFields)
+            .eq("id", input.savedAddressId)
+            .eq("user_id", userId);
+        } else if (input.saveAddress) {
+          const { data: existingAddresses } = await supabase
+            .from("addresses")
+            .select("id, full_name, line1, line2, city, state, postal_code, country")
+            .eq("user_id", userId);
 
-        if (!alreadySaved) {
-          const isFirst = !existingAddresses || existingAddresses.length === 0;
-
-          await supabase.from("addresses").insert({
-            user_id: userId,
-            label: "Default Delivery",
-            full_name: fullName,
+          const incomingAddress = {
+            fullName,
             line1,
-            line2: input.line2?.trim() || null,
+            line2: input.line2?.trim(),
             city,
             state,
-            postal_code: postalCode,
+            postalCode,
             country,
-            is_default: isFirst,
-            updated_at: new Date().toISOString(),
-          });
+          };
+
+          const savedMatch = (existingAddresses ?? []).find((address) =>
+            addressesMatch(address, incomingAddress),
+          );
+
+          if (savedMatch) {
+            await supabase
+              .from("addresses")
+              .update(deliveryFields)
+              .eq("id", savedMatch.id)
+              .eq("user_id", userId);
+          } else {
+            const isFirst = !existingAddresses || existingAddresses.length === 0;
+
+            await supabase.from("addresses").insert({
+              user_id: userId,
+              label: "Default Delivery",
+              full_name: fullName,
+              line1,
+              line2: input.line2?.trim() || null,
+              city,
+              state,
+              postal_code: postalCode,
+              country,
+              is_default: isFirst,
+              ...deliveryFields,
+            });
+          }
         }
       } catch {
         // Address save is non-blocking for order completion
@@ -618,8 +739,23 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       (acc, item) => acc + item.price * item.quantity,
       0,
     );
-    const shipping = calculateShipping(subtotal);
-    const total = subtotal + shipping;
+    const shippingQuote = await getShippingQuote({ subtotal, city, district });
+    const shipping = shippingQuote.shipping;
+
+    let appliedCoupon: Coupon | null = null;
+    let discount = 0;
+
+    if (input.couponCode?.trim()) {
+      const coupon = await findCouponByCode(input.couponCode);
+      const couponResult = validateCoupon(coupon, subtotal);
+      if (!couponResult.valid) {
+        return { success: false, error: couponResult.error };
+      }
+      appliedCoupon = couponResult.coupon;
+      discount = couponResult.discount;
+    }
+
+    const total = Math.max(0, subtotal - discount) + shipping;
     const orderNumber = generateOrderNumber();
 
     const shippingAddressJson = {
@@ -633,6 +769,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       state,
       postalCode,
       country,
+      district,
       phone,
       email,
     };
@@ -640,12 +777,43 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     // 6. Deduct inventory before creating the order
     const dbClient = hasAdminCredentials() ? createAdminClient() : supabase;
 
+    if (appliedCoupon) {
+      const { data: redeemed, error: redeemError } = await dbClient.rpc(
+        "redeem_coupon",
+        { coupon_id: appliedCoupon.id },
+      );
+      if (redeemError || !redeemed) {
+        return {
+          success: false,
+          error: "This coupon code has reached its usage limit.",
+        };
+      }
+    }
+
+    async function releaseCoupon() {
+      if (!appliedCoupon) return;
+      try {
+        const { data } = await dbClient
+          .from("coupons")
+          .select("used_count")
+          .eq("id", appliedCoupon.id)
+          .single();
+        await dbClient
+          .from("coupons")
+          .update({ used_count: Math.max(0, Number(data?.used_count ?? 1) - 1) })
+          .eq("id", appliedCoupon.id);
+      } catch {
+        // Best effort — usage count may be one higher than actual.
+      }
+    }
+
     const inventoryResult = await deductInventoryForOrderItems(
       dbClient,
       input.items,
     );
 
     if (!inventoryResult.success) {
+      await releaseCoupon();
       return {
         success: false,
         error:
@@ -688,6 +856,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       shipping,
       total,
       shipping_address: shippingAddressJson,
+      ...(appliedCoupon
+        ? { coupon_code: appliedCoupon.code.toUpperCase(), discount }
+        : {}),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -700,6 +871,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     if (orderError || !orderData) {
       console.error("Failed to insert order:", orderError?.message);
+      await releaseCoupon();
       return {
         success: false,
         error: orderError?.message || "Failed to process order. Please try again.",
@@ -707,6 +879,13 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }
 
     const orderId = orderData.id;
+
+    await recordOrderHistory(dbClient, {
+      orderId,
+      status,
+      paymentStatus,
+      note: "Order placed",
+    });
 
     // 7. Insert Order Items
     const itemRows = input.items.map((item) => ({
@@ -749,6 +928,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         paymentMethod,
         paymentStatus,
         orderStatus: status,
+        couponCode: appliedCoupon?.code.toUpperCase() ?? null,
+        discount,
         subtotal,
         shipping,
         total,

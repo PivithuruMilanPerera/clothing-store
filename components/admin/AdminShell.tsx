@@ -6,21 +6,25 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { LogOutIcon, MenuIcon, XIcon } from "@/components/icons";
 import logo from "@/public/logo.png";
+import type { AdminRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AdminNav } from "./AdminNav";
 
 type AdminShellProps = {
   adminEmail?: string;
+  role: AdminRole;
   signOutAction: () => Promise<void>;
   children: ReactNode;
 };
 
 function SidebarInner({
   adminEmail,
+  role,
   signOutAction,
   onClose,
 }: {
   adminEmail?: string;
+  role: AdminRole;
   signOutAction: () => Promise<void>;
   onClose?: () => void;
 }) {
@@ -54,26 +58,22 @@ function SidebarInner({
         )}
       </div>
 
-      {/* Section label */}
-      <div className="px-6 pt-6 pb-2">
-        <p className="font-label text-[10px] font-bold uppercase tracking-[0.2em] leading-none text-on-primary/40">
-          Admin Panel
-        </p>
-      </div>
-
       {/* Nav links */}
-      <AdminNav />
+      <AdminNav role={role} />
 
       {/* Sidebar footer — user + sign out */}
       <div className="shrink-0 border-t border-on-primary/10 px-4 py-4">
         {adminEmail && (
           <p
-            className="mb-3 truncate font-body text-[11px] leading-none text-on-primary/50"
+            className="mb-1.5 truncate font-body text-[11px] leading-none text-on-primary/50"
             title={adminEmail}
           >
             {adminEmail}
           </p>
         )}
+        <p className="mb-3 font-label text-[10px] font-bold uppercase tracking-[0.15em] leading-none text-on-primary/40">
+          {role === "super_admin" ? "Super Admin" : "Admin"}
+        </p>
         <form action={signOutAction}>
           <button
             type="submit"
@@ -90,6 +90,7 @@ function SidebarInner({
 
 export function AdminShell({
   adminEmail,
+  role,
   signOutAction,
   children,
 }: AdminShellProps) {
@@ -122,7 +123,11 @@ export function AdminShell({
     <div className="flex min-h-screen bg-surface-container-lowest">
       {/* ── Desktop sidebar ── */}
       <aside className="hidden lg:flex lg:flex-col lg:w-60 xl:w-64 lg:shrink-0 bg-primary text-on-primary sticky top-0 h-screen overflow-y-auto">
-        <SidebarInner adminEmail={adminEmail} signOutAction={signOutAction} />
+        <SidebarInner
+          adminEmail={adminEmail}
+          role={role}
+          signOutAction={signOutAction}
+        />
       </aside>
 
       {/* ── Mobile overlay ── */}
@@ -153,6 +158,7 @@ export function AdminShell({
       >
         <SidebarInner
           adminEmail={adminEmail}
+          role={role}
           signOutAction={signOutAction}
           onClose={() => setIsDrawerOpen(false)}
         />

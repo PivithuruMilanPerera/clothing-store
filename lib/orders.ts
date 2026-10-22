@@ -1,8 +1,13 @@
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentAdmin, requireAdmin } from "@/lib/auth";
 import {
   buildOrderEmailPayloadFromOrder,
   sendOrderStatusUpdateEmail,
 } from "@/lib/order-emails";
+import {
+  getOrderHistory,
+  recordOrderHistory,
+  type OrderHistoryEntry,
+} from "@/lib/order-history";
 import { normalizePaymentStatus } from "@/lib/order-status";
 import { createAdminClient, hasAdminCredentials } from "@/lib/supabase/admin";
 import type { Order, OrderStatus, PaymentStatus } from "@/lib/types";
@@ -23,16 +28,16 @@ export function isOrderCancellable(status: OrderStatus): boolean {
 
 export const cancellableOrderStatuses = CANCELLABLE_ORDER_STATUSES;
 
-function normalizeOrder(order: Order): Order {
+export function normalizeOrder(order: Order): Order {
   return {
     ...order,
     payment_status: normalizePaymentStatus(order.payment_status),
+    discount: Number(order.discount ?? 0),
   };
 }
 
-export async function getAllOrdersForAdmin(): Promise<Order[]> {
-  await requireAdmin();
-
+/** Loads every order (with line items) using the service role client. */
+export async function fetchAllOrders(): Promise<Order[]> {
   if (!hasAdminCredentials()) {
     console.error("Failed to load admin orders: missing Supabase admin credentials.");
     return [];
@@ -65,6 +70,47 @@ export async function getAllOrdersForAdmin(): Promise<Order[]> {
   return orders;
 }
 
+export async function getAllOrdersForAdmin(): Promise<Order[]> {
+  await requireAdmin();
+  return fetchAllOrders();
+}
+
+export type AdminOrderDetail = {
+  order: Order;
+  history: OrderHistoryEntry[];
+};
+
+export async function getOrderForAdmin(
+  orderId: string,
+): Promise<AdminOrderDetail | null> {
+  await requireAdmin();
+
+  if (!hasAdminCredentials()) {
+    return null;
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const order = normalizeOrder(data as Order);
+  const history = await getOrderHistory(supabase, orderId);
+
+  return { order, history };
+}
+
+async function getActor() {
+  const admin = await getCurrentAdmin();
+  return admin ? { id: admin.id, email: admin.email } : null;
+}
+
 export async function updateOrderPaymentStatus(
   orderId: string,
   paymentStatus: PaymentStatus,
@@ -76,18 +122,28 @@ export async function updateOrderPaymentStatus(
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("orders")
     .update({
       payment_status: paymentStatus,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .select("status")
+    .single();
 
   if (error) {
     console.error("Failed to update payment status:", error.message);
     return { success: false, error: error.message };
   }
+
+  await recordOrderHistory(supabase, {
+    orderId,
+    status: data.status as OrderStatus,
+    paymentStatus,
+    note: `Payment marked ${paymentStatus}`,
+    actor: await getActor(),
+  });
 
   return { success: true };
 }
@@ -126,7 +182,7 @@ async function notifyCustomerOrderStatus(
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
-  options?: { trackingNumber?: string | null },
+  options?: { trackingNumber?: string | null; note?: string | null },
 ): Promise<{ success: boolean; error?: string }> {
   await requireAdmin();
 
@@ -144,6 +200,13 @@ export async function updateOrderStatus(
   }
 
   const supabase = createAdminClient();
+  const { data: current } = await supabase
+    .from("orders")
+    .select("status")
+    .eq("id", orderId)
+    .maybeSingle();
+  const statusChanged = current?.status !== status;
+
   const updatePayload: {
     status: OrderStatus;
     updated_at: string;
@@ -153,23 +216,34 @@ export async function updateOrderStatus(
     updated_at: new Date().toISOString(),
   };
 
-  if (status === "shipped") {
-    updatePayload.tracking_number = trackingNumber;
-  } else if (trackingNumber) {
+  if (trackingNumber) {
     updatePayload.tracking_number = trackingNumber;
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("orders")
     .update(updatePayload)
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .select("payment_status")
+    .single();
 
   if (error) {
     console.error("Failed to update order status:", error.message);
     return { success: false, error: error.message };
   }
 
-  await notifyCustomerOrderStatus(orderId, status);
+  await recordOrderHistory(supabase, {
+    orderId,
+    status,
+    paymentStatus: normalizePaymentStatus(data.payment_status),
+    trackingNumber,
+    note: options?.note,
+    actor: await getActor(),
+  });
+
+  if (statusChanged) {
+    await notifyCustomerOrderStatus(orderId, status);
+  }
 
   return { success: true };
 }
@@ -198,6 +272,14 @@ export async function markOrderCashCollected(
     console.error("Failed to mark cash collected:", error.message);
     return { success: false, error: error.message };
   }
+
+  await recordOrderHistory(supabase, {
+    orderId,
+    status: "delivered",
+    paymentStatus: "paid",
+    note: "Cash collected on delivery",
+    actor: await getActor(),
+  });
 
   await notifyCustomerOrderStatus(orderId, "delivered");
 

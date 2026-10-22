@@ -72,6 +72,7 @@ export type StoreProduct = {
   shipping_returns: string;
   badge: string | null;
   inventory: number;
+  low_stock_threshold?: number | null;
   is_published: boolean;
   created_at: string;
   updated_at: string;
