@@ -22,7 +22,7 @@ export function StockAlertList({
         <li key={`${alert.productId}:${alert.variantLabel ?? ""}`}>
           <Link
             href={`/admin/products?q=${encodeURIComponent(alert.slug)}`}
-            className="flex items-center gap-3 py-3 hover:bg-surface-container-low"
+            className="flex items-start gap-3 py-3 hover:bg-surface-container-low"
           >
             <div className="relative h-10 w-10 shrink-0 overflow-hidden border border-outline-variant bg-surface-container-low">
               {alert.image ? (
@@ -36,27 +36,27 @@ export function StockAlertList({
               ) : null}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-body truncate text-sm font-medium text-on-surface">
-                {alert.productName}
-              </p>
-              <p className="font-body truncate text-xs text-on-surface-variant">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-body min-w-0 truncate text-sm font-medium text-on-surface">
+                  {alert.productName}
+                </p>
+                <span className="font-body shrink-0 text-xs tabular-nums text-on-surface-variant">
+                  {alert.inventory} left
+                </span>
+              </div>
+              <p className="font-body mt-1 truncate text-xs text-on-surface-variant">
                 {alert.variantLabel ?? "All variants"} · threshold {alert.threshold}
                 {alert.isPublished ? "" : " · unpublished"}
               </p>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
               <AdminBadge
                 className={
                   alert.state === "out"
-                    ? "border-error/30 bg-error/10 text-error"
-                    : "border-amber-500/30 bg-amber-500/10 text-amber-700"
+                    ? "mt-2 border-error/30 bg-error/10 text-error"
+                    : "mt-2 border-amber-500/30 bg-amber-500/10 text-amber-700"
                 }
               >
                 {alert.state === "out" ? "Out of stock" : "Low stock"}
               </AdminBadge>
-              <span className="font-body text-xs tabular-nums text-on-surface-variant">
-                {alert.inventory} left
-              </span>
             </div>
           </Link>
         </li>

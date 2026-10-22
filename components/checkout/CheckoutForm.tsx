@@ -567,11 +567,11 @@ export function CheckoutForm() {
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,26rem)] lg:gap-14">
+    <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,26rem)] lg:gap-14">
       {/* ── Left Column: Checkout Details Form ── */}
-      <div>
+      <div className="min-w-0">
         {/* Checkout header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <Link
             href="/cart"
             className="font-body text-xs font-semibold text-on-surface-variant hover:text-on-surface underline underline-offset-4"
@@ -1258,22 +1258,11 @@ export function CheckoutForm() {
               </p>
             </div>
           ) : null}
-
-          {/* Complete Order Button (Mobile fallback) */}
-          <div className="lg:hidden">
-            <Button
-              type="submit"
-              disabled={isSubmitting || hasOutOfStockItems}
-              className="w-full py-4 text-xs font-bold uppercase tracking-[0.15em]"
-            >
-              {isSubmitting ? "Processing Order..." : `Complete Order • ${formatPrice(total)}`}
-            </Button>
-          </div>
         </form>
       </div>
 
       {/* ── Right Column: Order Summary Sidebar ── */}
-      <div>
+      <div className="min-w-0">
         <div className="sticky top-24 rounded-sm border border-outline-variant bg-surface-container-lowest p-6 shadow-xs">
           <h2 className="font-headline text-lg font-bold uppercase text-on-surface">
             Order Summary
@@ -1331,7 +1320,7 @@ export function CheckoutForm() {
                 </button>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex min-w-0 gap-2">
                 <input
                   type="text"
                   value={couponInput}
@@ -1351,7 +1340,7 @@ export function CheckoutForm() {
                   variant="ghost"
                   onClick={() => void handleApplyCoupon()}
                   disabled={isApplyingCoupon || !couponInput.trim()}
-                  className="px-4 py-2"
+                  className="!w-auto max-md:!min-w-0 shrink-0 px-4 py-2"
                 >
                   {isApplyingCoupon ? "Applying..." : "Apply"}
                 </Button>

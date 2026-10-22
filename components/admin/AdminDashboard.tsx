@@ -39,7 +39,7 @@ export function AdminDashboard({
         </AdminNotice>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <AdminStatCard label="Orders today" value={data.ordersToday} href="/admin/orders" />
         <AdminStatCard
           label="This month"
@@ -73,7 +73,7 @@ export function AdminDashboard({
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-5">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-5">
         <AdminPanel
           title="Recent orders"
           className="xl:col-span-3"
@@ -94,9 +94,9 @@ export function AdminDashboard({
                 <li key={order.id}>
                   <Link
                     href={`/admin/orders/${order.id}`}
-                    className="flex flex-wrap items-center gap-3 py-3 hover:bg-surface-container-low"
+                    className="flex flex-col gap-2 py-3 hover:bg-surface-container-low sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
                   >
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 sm:flex-1">
                       <p className="font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface">
                         {order.order_number}
                       </p>
@@ -104,12 +104,14 @@ export function AdminDashboard({
                         {order.customer_name || "Guest customer"} · {formatAdminDate(order.created_at)}
                       </p>
                     </div>
-                    <AdminBadge className={orderStatusBadgeClass(order.status)}>
-                      {ORDER_STATUS_LABELS[order.status]}
-                    </AdminBadge>
-                    <p className="font-body w-28 text-right text-sm font-medium tabular-nums text-on-surface">
-                      {formatPrice(Number(order.total))}
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 sm:contents">
+                      <AdminBadge className={orderStatusBadgeClass(order.status)}>
+                        {ORDER_STATUS_LABELS[order.status]}
+                      </AdminBadge>
+                      <p className="font-body text-sm font-medium tabular-nums text-on-surface sm:w-28 sm:text-right">
+                        {formatPrice(Number(order.total))}
+                      </p>
+                    </div>
                   </Link>
                 </li>
               ))}
@@ -149,7 +151,7 @@ export function AdminDashboard({
                 key={item.key}
                 className="flex items-center gap-3 border-b border-outline-variant py-3"
               >
-                <span className="font-headline w-6 text-sm font-extrabold tabular-nums text-on-surface-variant">
+                <span className="font-headline w-6 shrink-0 text-sm font-extrabold tabular-nums text-on-surface-variant">
                   {index + 1}
                 </span>
                 <div className="relative h-10 w-10 shrink-0 overflow-hidden border border-outline-variant bg-surface-container-low">
@@ -172,9 +174,10 @@ export function AdminDashboard({
                   )}
                   <p className="font-body text-xs text-on-surface-variant">
                     {item.orders} order{item.orders === 1 ? "" : "s"}
+                    <span className="sm:hidden"> · {item.units} sold</span>
                   </p>
                 </div>
-                <p className="font-body text-sm font-semibold tabular-nums text-on-surface">
+                <p className="font-body hidden shrink-0 text-sm font-semibold tabular-nums text-on-surface sm:block">
                   {item.units} sold
                 </p>
               </li>

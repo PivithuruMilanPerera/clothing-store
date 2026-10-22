@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const adminInputClass =
-  "font-body w-full border border-outline-variant/50 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-60";
+  "font-body w-full min-w-0 max-w-full border border-outline-variant/50 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-60";
 
 export const adminLabelClass =
   "mb-1.5 block font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant";
@@ -29,8 +29,8 @@ export function AdminPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+      <div className="min-w-0">
         <p className="font-label text-xs font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant">
           {eyebrow}
         </p>
@@ -64,12 +64,12 @@ export function AdminPanel({
   return (
     <section
       className={cn(
-        "border border-outline-variant bg-surface-container-lowest",
+        "min-w-0 border border-outline-variant bg-surface-container-lowest",
         className,
       )}
     >
       {title || actions ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant px-4 py-3 sm:px-5 sm:py-4">
           <div>
             {title ? (
               <h2 className="font-label text-xs font-bold uppercase tracking-[0.15em] text-on-surface">
@@ -85,7 +85,7 @@ export function AdminPanel({
           {actions}
         </div>
       ) : null}
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </section>
   );
 }
@@ -112,12 +112,12 @@ export function AdminStatCard({
 
   const content = (
     <>
-      <p className="font-label text-[10px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">
+      <p className="font-label text-[10px] font-bold uppercase leading-snug tracking-[0.12em] text-on-surface-variant sm:tracking-[0.15em]">
         {label}
       </p>
       <p
         className={cn(
-          "font-headline mt-3 text-2xl font-extrabold tabular-nums md:text-3xl",
+          "font-headline mt-2 break-words text-xl font-extrabold tabular-nums leading-none sm:mt-3 sm:text-2xl md:text-3xl",
           toneClass,
         )}
       >
@@ -130,7 +130,7 @@ export function AdminStatCard({
   );
 
   const className =
-    "block border border-outline-variant bg-surface-container-lowest p-5";
+    "block min-w-0 border border-outline-variant bg-surface-container-lowest p-4 sm:p-5";
 
   return href ? (
     <Link href={href} className={cn(className, "hover:border-primary")}>

@@ -52,7 +52,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
 
       <ReportFilters period={report.period} from={report.from} to={report.to} />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
         <AdminStatCard
           label="Gross revenue"
           value={money(totals.gross)}
@@ -89,7 +89,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
         <RevenueChart buckets={report.buckets} />
       </AdminPanel>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <AdminPanel
           title="Most sold items"
           description="Units sold in the selected range, with all-time totals and the trend per period."
@@ -97,7 +97,8 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
           {report.mostSold.length === 0 ? (
             <AdminEmptyState>No sales in this period.</AdminEmptyState>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[560px] text-left">
                 <thead>
                   <tr className="font-label border-b border-outline-variant text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
@@ -145,6 +146,44 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                 </tbody>
               </table>
             </div>
+            <ol className="divide-y divide-outline-variant md:hidden">
+              {report.mostSold.map((item, index) => (
+                <li key={item.key} className="py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="font-headline w-6 shrink-0 text-sm font-extrabold tabular-nums text-on-surface-variant">
+                      {index + 1}
+                    </span>
+                    <div className="relative h-9 w-9 shrink-0 overflow-hidden border border-outline-variant bg-surface-container-low">
+                      {item.image ? (
+                        <Image src={item.image} alt={item.name} fill sizes="36px" className="object-cover" />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {item.slug ? (
+                        <Link
+                          href={`/admin/products?q=${encodeURIComponent(item.slug)}`}
+                          className="font-body block truncate text-sm font-medium text-on-surface hover:underline"
+                        >
+                          {item.name}
+                        </Link>
+                      ) : (
+                        <p className="font-body truncate text-sm font-medium text-on-surface">{item.name}</p>
+                      )}
+                      <p className="font-body mt-0.5 text-xs text-on-surface-variant">
+                        {item.units} sold · {money(item.revenue)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 pl-9">
+                    <p className="font-body text-xs text-on-surface-variant">
+                      {item.allTimeUnits} all-time
+                    </p>
+                    <Sparkline values={item.trend} />
+                  </div>
+                </li>
+              ))}
+            </ol>
+            </>
           )}
         </AdminPanel>
 
@@ -163,15 +202,15 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                       {index + 1}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-body flex items-center gap-2 truncate text-sm font-medium text-on-surface">
-                        {customer.name}
+                      <p className="font-body flex min-w-0 items-center gap-2 text-sm font-medium text-on-surface">
+                        <span className="truncate">{customer.name}</span>
                         {customer.isGuest ? <AdminBadge>Guest</AdminBadge> : null}
                       </p>
                       <p className="font-body truncate text-xs text-on-surface-variant">
                         {customer.email} · {customer.orders} order{customer.orders === 1 ? "" : "s"}
                       </p>
                     </div>
-                    <span className="font-body text-sm font-semibold tabular-nums text-on-surface">
+                    <span className="font-body shrink-0 text-sm font-semibold tabular-nums text-on-surface">
                       {money(customer.totalSpent)}
                     </span>
                   </Link>

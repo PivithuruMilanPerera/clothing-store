@@ -150,7 +150,7 @@ export function AdminShell({
         aria-label="Admin navigation"
         aria-hidden={!isDrawerOpen}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-primary text-on-primary transition-transform duration-300 ease-out lg:hidden",
+          "fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-3rem))] flex-col bg-primary pt-[env(safe-area-inset-top)] text-on-primary transition-transform duration-300 ease-out lg:hidden",
           isDrawerOpen
             ? "translate-x-0"
             : "-translate-x-full pointer-events-none",
@@ -165,41 +165,43 @@ export function AdminShell({
       </aside>
 
       {/* ── Main column ── */}
-      <div className="flex min-h-screen flex-1 flex-col min-w-0">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-clip">
         {/* Mobile top header */}
-        <header className="lg:hidden sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-4">
-          <button
-            type="button"
-            aria-label="Open navigation"
-            aria-expanded={isDrawerOpen}
-            aria-controls="admin-mobile-drawer"
-            onClick={() => setIsDrawerOpen(true)}
-            className="text-primary hover:opacity-70"
-          >
-            <MenuIcon className="h-5 w-5" />
-          </button>
+        <header className="sticky top-0 z-30 shrink-0 border-b border-outline-variant bg-surface-container-lowest pt-[env(safe-area-inset-top)] lg:hidden">
+          <div className="flex h-14 items-center justify-between px-4">
+            <button
+              type="button"
+              aria-label="Open navigation"
+              aria-expanded={isDrawerOpen}
+              aria-controls="admin-mobile-drawer"
+              onClick={() => setIsDrawerOpen(true)}
+              className="text-primary hover:opacity-70"
+            >
+              <MenuIcon className="h-5 w-5" />
+            </button>
 
-          <Link href="/admin" aria-label="Admin home">
-            <Image
-              src={logo}
-              alt="Velvorz"
-              width={104}
-              height={26}
-              className="w-26 h-auto object-contain"
-            />
-          </Link>
+            <Link href="/admin" aria-label="Admin home">
+              <Image
+                src={logo}
+                alt="Velvorz"
+                width={104}
+                height={26}
+                className="h-auto w-24 object-contain"
+              />
+            </Link>
 
-          {/* Right spacer to keep logo centred */}
-          <div className="w-5" aria-hidden="true" />
+            {/* Right spacer to keep logo centred */}
+            <div className="w-5" aria-hidden="true" />
+          </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-5 md:p-8 lg:p-10">
+        <main className="flex-1 px-4 py-4 sm:p-5 md:p-8 lg:p-10">
           {children}
         </main>
 
         {/* Admin footer */}
-        <footer className="shrink-0 border-t border-outline-variant px-5 py-4 md:px-8 lg:px-10">
+        <footer className="shrink-0 border-t border-outline-variant px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5 md:px-8 lg:px-10">
           <p className="font-label text-[10px] font-bold uppercase tracking-[0.15em] leading-none text-on-surface-variant text-center">
             © {new Date().getFullYear()} VELVORZ — Admin Panel
           </p>

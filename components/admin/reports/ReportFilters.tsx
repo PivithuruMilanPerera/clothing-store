@@ -37,17 +37,17 @@ export function ReportFilters({
   }
 
   return (
-    <div className={cn("flex flex-wrap items-end gap-3", isPending && "opacity-60")}>
-      <div>
+    <div className={cn("flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end", isPending && "opacity-60")}>
+      <div className="w-full sm:w-auto">
         <p className={adminLabelClass}>Group by</p>
-        <div className="flex">
+        <div className="flex w-full sm:w-auto">
           {PERIODS.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => navigate({ period: option.value })}
               className={cn(
-                "font-label border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] -ml-px first:ml-0",
+                "font-label flex-1 border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] -ml-px first:ml-0 sm:flex-none",
                 period === option.value
                   ? "relative border-primary bg-primary text-on-primary"
                   : "border-outline-variant text-on-surface-variant hover:text-on-surface",
@@ -63,29 +63,33 @@ export function ReportFilters({
           event.preventDefault();
           navigate({ period, from: fromDate, to: toDate });
         }}
-        className="flex flex-wrap items-end gap-2"
+        className="grid grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap"
       >
-        <label className="block">
+        <label className="block min-w-0">
           <span className={adminLabelClass}>From</span>
           <input
             type="date"
             value={fromDate}
             max={toDate}
             onChange={(event) => setFromDate(event.target.value)}
-            className={adminInputClass}
+            className={`${adminInputClass} max-w-full`}
           />
         </label>
-        <label className="block">
+        <label className="block min-w-0">
           <span className={adminLabelClass}>To</span>
           <input
             type="date"
             value={toDate}
             min={fromDate}
             onChange={(event) => setToDate(event.target.value)}
-            className={adminInputClass}
+            className={`${adminInputClass} max-w-full`}
           />
         </label>
-        <button type="submit" className={adminPrimaryButtonClass} disabled={isPending}>
+        <button
+          type="submit"
+          className={`${adminPrimaryButtonClass} col-span-2 w-full sm:col-span-1 sm:w-auto`}
+          disabled={isPending}
+        >
           Apply
         </button>
       </form>
