@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetailContent } from "@/components/product";
-import { SiteFooter, SiteHeader } from "@/components/layout";
 import { Container } from "@/components/ui";
 import { getPublishedProductDetail } from "@/lib/products";
 
@@ -34,14 +33,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
 
   return (
-    <>
-      <SiteHeader />
-      <main className="bg-surface-container-lowest py-10 md:py-14">
-        <Container>
-          <ProductDetailContent product={product} />
-        </Container>
-      </main>
-      <SiteFooter />
-    </>
+    <main className="bg-surface-container-lowest pt-4 pb-10 md:pt-6 md:pb-14">
+      <Container>
+        <ProductDetailContent product={product} />
+      </Container>
+    </main>
   );
 }

@@ -252,9 +252,7 @@ export function ProductDetailContent({ product }: ProductDetailContentProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Customer selects Color (default to first available or empty)
-  const [selectedColor, setSelectedColor] = useState(
-    product.colors[0] ?? "",
-  );
+  const [selectedColor, setSelectedColor] = useState(product.colors[0] ?? "");
 
   // Customer explicitly selects Size (starts empty when sizes exist to require choice)
   const [selectedSize, setSelectedSize] = useState<string>("");

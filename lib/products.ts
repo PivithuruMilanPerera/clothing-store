@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { slugifyCategoryName } from "@/lib/category-tree";
 import type { StoreCategory } from "@/lib/category-types";
 import { getAllCategories } from "@/lib/categories";
@@ -483,23 +484,23 @@ export function slugifyProductName(name: string): string {
   return slugifyCategoryName(name);
 }
 
-export async function getPublishedShopProducts(): Promise<ShopProduct[]> {
+export const getPublishedShopProducts = cache(async (): Promise<ShopProduct[]> => {
   const [products, categories] = await Promise.all([
     getPublishedProducts(),
     getAllCategories(),
   ]);
   return products.map((product) => toShopProduct(product, categories));
-}
+});
 
-export async function getPublishedProductDetail(
-  slug: string,
-): Promise<ProductDetail | null> {
-  const [product, categories] = await Promise.all([
-    getProductBySlugFromDb(slug),
-    getAllCategories(),
-  ]);
-  return product ? toProductDetail(product, categories) : null;
-}
+export const getPublishedProductDetail = cache(
+  async (slug: string): Promise<ProductDetail | null> => {
+    const [product, categories] = await Promise.all([
+      getProductBySlugFromDb(slug),
+      getAllCategories(),
+    ]);
+    return product ? toProductDetail(product, categories) : null;
+  },
+);
 
 export async function getPublishedProductSlugs(): Promise<string[]> {
   const supabase = await createClient();

@@ -60,6 +60,42 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
+function addItemToCart(current: CartItem[], item: AddCartItemInput): CartItem[] {
+  const id = createCartItemId(item.slug, item.color, item.size);
+  const addQty = Math.max(1, item.quantity ?? 1);
+  const existingIndex = current.findIndex((cartItem) => cartItem.id === id);
+
+  if (existingIndex >= 0) {
+    const existing = current[existingIndex];
+    const newQty = existing.quantity + addQty;
+    return current.map((cartItem, idx) =>
+      idx === existingIndex
+        ? {
+            ...cartItem,
+            quantity: newQty,
+            image: item.image || cartItem.image,
+            price: item.price || cartItem.price,
+          }
+        : cartItem,
+    );
+  }
+
+  return [
+    ...current,
+    {
+      id,
+      slug: item.slug,
+      name: item.name,
+      image: item.image,
+      price: item.price,
+      color: item.color,
+      colorName: item.colorName,
+      size: item.size,
+      quantity: addQty,
+    },
+  ];
+}
+
 /** Persistable cart fields only — excludes ephemeral stock flags that must not re-trigger DB sync. */
 function getCartSyncSignature(items: CartItem[]): string {
   return JSON.stringify(
@@ -86,6 +122,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSyncedSignatureRef = useRef<string>("");
   const isHydratedRef = useRef(false);
+  const itemsRef = useRef<CartItem[]>([]);
+  itemsRef.current = items;
 
   const performStockCheck = useCallback(async (cartItems: CartItem[]) => {
     if (cartItems.length === 0) {
@@ -259,47 +297,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback(
     (item: AddCartItemInput) => {
-      const id = createCartItemId(item.slug, item.color, item.size);
-      const addQty = Math.max(1, item.quantity ?? 1);
-
-      setItems((current) => {
-        const existingIndex = current.findIndex((cartItem) => cartItem.id === id);
-        let updated: CartItem[];
-
-        if (existingIndex >= 0) {
-          const existing = current[existingIndex];
-          const newQty = existing.quantity + addQty;
-          updated = current.map((cartItem, idx) =>
-            idx === existingIndex
-              ? {
-                  ...cartItem,
-                  quantity: newQty,
-                  image: item.image || cartItem.image,
-                  price: item.price || cartItem.price,
-                }
-              : cartItem,
-          );
-        } else {
-          updated = [
-            ...current,
-            {
-              id,
-              slug: item.slug,
-              name: item.name,
-              image: item.image,
-              price: item.price,
-              color: item.color,
-              colorName: item.colorName,
-              size: item.size,
-              quantity: addQty,
-            },
-          ];
-        }
-
-        // Trigger stock check with updated items
-        void performStockCheck(updated);
-        return updated;
-      });
+      const updated = addItemToCart(itemsRef.current, item);
+      itemsRef.current = updated;
+      setItems(updated);
+      void performStockCheck(updated);
     },
     [performStockCheck],
   );
