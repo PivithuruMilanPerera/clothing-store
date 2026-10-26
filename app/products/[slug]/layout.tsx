@@ -5,7 +5,7 @@ import { Container } from "@/components/ui";
 function HeaderFallback() {
   return (
     <header className="bg-surface-container-lowest">
-      <Container className="h-16 md:h-20" />
+      <Container className="h-16 md:h-20">{null}</Container>
     </header>
   );
 }
