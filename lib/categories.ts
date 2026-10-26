@@ -1,3 +1,4 @@
+import { cache } from "react";
 import {
   MAX_MAIN_CATEGORIES,
   type CategoryTreeNode,
@@ -35,7 +36,7 @@ function toNavLink(node: CategoryTreeNode): NavLink {
   };
 }
 
-export async function getAllCategories(): Promise<StoreCategory[]> {
+export const getAllCategories = cache(async (): Promise<StoreCategory[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
@@ -47,7 +48,7 @@ export async function getAllCategories(): Promise<StoreCategory[]> {
   }
 
   return data as StoreCategory[];
-}
+});
 
 export async function getCategoryBySlug(
   slug: string,
